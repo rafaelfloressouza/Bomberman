@@ -7,8 +7,16 @@ output3:	.string	"* "
 output4:	.string "$ "
 output5:	.string "*\t"
 output6:	.string "$\t"
-output7:	.string "Test Number: %d\n"
-output8:	.string  "Your name is: %s\n"
+output7:	.string "+ "
+output8:	.string "- "
+output9:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
+output10:	.string "\nTotal negative entries %d/%d = %.2f%% less than 40%%"
+output11:	.string "\nTotal reward entries %d/%d = %.2f%% less than 20%% (including exit tile)\n\n"
+output12:	.string "\nEnter x position or quit (q): "
+output13:	.string "\nEnter y position or quit (q): "
+output14:	.string "\nGame state not stored\nBye...\n"
+output15:	.string "Test Number: %d\n"
+output16:	.string  "Your name is: %s\n"
 error0:		.string "Not enough arguments provided!\n"
 error1:		.string "Height and Width have to be >=10\n"
 input0:		.string "%d"
@@ -17,10 +25,11 @@ input1:		.string "%s"
 	.balign	4                				// Adding 4 bytes of padding (to keep everything consistent)
 	.global main             				// Making main global to the linker (OS)
 
-	define(	base_r,		x19 )
-	define( i_r,		x20 ) 
-	define( j_r,		x21 )
-	define( offset_r,	x22 )
+	define(	base_r,		x19 )				// Defining x19 as base_r
+	define( i_r,		x20 ) 				// Defining x20 as i_r 
+	define( j_r,		x21 )				// Defining x21 as j_r
+	define( offset_r,	x22 )				// Defining x22 as offset_r
+	define(	tmp_r,		x23 )				// Defining x23 as tmp_r
 
 	// Register offsets (for restoring them)
 	reg_size = 8
@@ -28,6 +37,7 @@ input1:		.string "%s"
 	r20_offset = 24
 	r21_offset = 32
 	r22_offset = 40
+	r23_offset = 48
 	
 	// CELL STRUCT {bool discovered, float value}
 	cell_struct_size = 9
@@ -40,7 +50,7 @@ input1:		.string "%s"
 	ycoord_offset = 4
 	
 
-	// Subroutine is in charge of providing a seed random function
+	// Subroutine is in charge of providing a seed for
 	// function random number.
 sRand:	stp	x29,	x30,	[sp, -16]!			// Allocatinng 16 bytes onn the stack for the subroutine
 	mov	x29,	sp					// Making x29 point to sp (done so sp is not changed)
@@ -55,7 +65,8 @@ sRand:	stp	x29,	x30,	[sp, -16]!			// Allocatinng 16 bytes onn the stack for the 
 	ldp	x29,	x30,	[sp],	16			// Deallocating 16 bytes from the stack
 	ret							// Returning to the operating system
 
-/*--------------------------------------------------------------*/
+	/*--------------------------------------------------------------*/
+
 	/* 
 	Subroutine is in charge of generating an integer random number
 	between the given lower_bound (w0) and upper_bound (w1)
@@ -142,7 +153,8 @@ e_if_rand2:
 	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating "dealoc" bytes
 	ret							// Returning to main
 	
-/*--------------------------------------------------------------*/
+	/*--------------------------------------------------------------*/
+
 	/*
 	Subroutine is in charge of generating a float random number
 	between 0.0 and 15.0 inclusive.
@@ -193,24 +205,26 @@ e_if_float_rand2:
 	ldp	x29,	x30,	[sp],	32			// Restoring x29, x30 and deallocating memory
 	ret							// Returning to main
 
-/*--------------------------------------------------------------*/
+	/*--------------------------------------------------------------*/
+
 	/*
 	Subroutine display the 2D game board (uncovered)
 	It accepts the address of the board in x0
 	Does not return anything
 	*/
 
-	alloc = -(reg_size + reg_size + reg_size + reg_size + 16) & -16
+	alloc = -(reg_size + reg_size + reg_size + reg_size + reg_size + 16) & -16
 	dealloc = -alloc
 UncoveredBoard:	
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes
 	mov	x29,	sp					// Making x29 point to sp
 	
-	// Storing callee registers
+	// Storing callee-saved registers
 	str	x19,	[x29,	r19_offset]			// Storing register x19 into the stack
 	str	x20,	[x29,	r20_offset]			// Storing register x20 into the stack
 	str	x21,	[x29,	r21_offset]			// Storing register x21 into the stack
 	str	x22,	[x29,	r22_offset]			// Storing register x22 into the stack
+	str	x23,	[x29,	r23_offset]			// Storing register x23 into the stack
 
 	mov	base_r,	x0					// Moving x0 into base_r
 	mov	i_r,	#0					// Moving 0 into i_r
@@ -275,32 +289,75 @@ uboard_test:
 	cmp	i_r,	x14					// Comparing i_r and x14
 	b.lt	uboard_loop					// If i_r < x14, then branch uboard_loop
 
-	// Restoring calle registers
+	// Printing percentage summary of negative and reward tiles
+	ldr	x9,	=height					// Load x9 with address of height
+	ldr	x10,	=width					// Load x10 with address of width
+	ldrsw	x9,	[x9]					// Load x9 with value of height 
+	ldrsw	x10,	[x10]					// Load x10 with value of width
+	mul	tmp_r,	x10,	x9				// tmp_r contains the number of elements in the board				
+	ldr	x10,	=neg_cells				// Load x10 with address of neg_cells
+	ldrsw	x10,	[x10]					// Load x10 with value of neg_cells
+	ldr	x11,	=db_cells				// Load x11 with address of db_cells
+	ldrsw	x11,	[x11]					// Load x11 with value of db_cells
+
+	scvtf	d16,	tmp_r					// d16 contains the number of elemets in the board
+	scvtf	d17,	x10					// d17 contains the number of negative cells
+	scvtf	d18,	x11					// d18 contains the number of double-range rewards
+
+	fdiv	d17,	d17,	d16				// d17 contains the ratio of negative cells
+	fdiv	d18,	d18,	d16				// d18 contais the ratio of double range rewards 
+
+	mov	x9,	100					// Moving 100 into x9
+	scvtf	d19,	x9					// Converting 100 into a float and storing it in d17
+	fmul	d17,	d17,	d19				// Multiplying neg number ratio by 100
+	fmul	d18,	d18,	d19				// Multiplying double-range reward ratio by 100
+
+
+	// Printing information about negative cells
+	ldr	x0,	=output10				// Loading x0 with address of output10
+	ldr	x9,	=neg_cells				// Loading x9 with address of neg_cells
+	ldrsw	x1,	[x9]					// Loading x1 with value of neg_cells
+	mov	x2,	tmp_r					// Moving tmp_r into x2
+	fmov	d0,	d17					// Moving d17 into d0
+	bl	printf						// Branch and link printf
+
+	// Printing information about double-range rewards
+	ldr	x0,	=output11 				// Loading x0 with address of output11
+	ldr	x9,	=db_cells				// Loading x9 with address of db_cells
+	ldrsw	x1,	[x9]					// Loading x1 with value of db_cells
+	mov	x2,	tmp_r					// Moving tmp_r into x2
+	fmov	d0,	d18					// Moving d18 into d0
+	bl	printf						// Branch and link printf
+	
+	// Restoring calle-saved registers
 	ldr	x19,	[x29,	r19_offset]			// Loadig value of x19 from stack
 	ldr	x20,	[x29,	r20_offset]			// Loading value of x20 from stack
 	ldr	x21,	[x29,	r21_offset]			// Loading value of x21 from stack
 	ldr	x22,	[x29,	r22_offset]			// Loading value of x22 from stack
+	ldr	x23,	[x29,	r23_offset]			// Loading value of x23 from stack
 
 	ldp 	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating memory
 	ret							// Returning to main
 	
-/*--------------------------------------------------------------*/
+	/*--------------------------------------------------------------*/
+
 	/*
 	Subroutine initializes the 2D game board 
 	It accepts the addres of the board in x0
 	Does not return anything
 	*/
+	
 	double_range_bytes = 4
 	neg_floats_size = 4
 
-	alloc = -(reg_size + reg_size + reg_size + reg_size + coord_struct_size + double_range_bytes + coord_struct_size + neg_floats_size + coord_struct_size + 16) & -16
+	alloc = -(double_range_bytes + neg_floats_size + coord_struct_size + coord_struct_size + reg_size + reg_size + reg_size + reg_size + coord_struct_size  + 16) & -16
 	dealloc = -alloc
 
-	exit_tile_offset = 16
-	double_range_size_offset = 24
-	neg_floats_offset = 28
-	rng_reward_offset = 32
-	n_float_offset = 40
+	exit_tile_offset = 48			// Struct to store x-coord and y-coordinates of exit cell
+	double_range_size_offset = 56		// Number of double-range rewards to generate
+	neg_floats_offset = 60			// Number of negative numbers to generate
+	rng_reward_offset = 64			// Struct to store x-coord and y-coordinates of exit cell
+	n_float_offset = 72			// Struct to store x-cood and y-coordinates of negative cells
 	
 InitializeGame:
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes 
@@ -314,25 +371,92 @@ InitializeGame:
 
 	// Moving base addres of board into base_r
 	mov	base_r,	x0					// Moving x0 into base_r
-	
+
 	// Getting random position for exit tile
+	// x-coordinate
+	mov	w0,	#0					// Move 0 into w0
+	ldr	x9,	=height					// Load x9 with address of height
+	ldrsw	x9,	[x9]					// Load x9 with value of height
+	sub	x9,	x9,	#1				// Subtract x9 by one
+	mov	w1,	w9					// Move w9 into w0
+	bl	IntRand						// Branch ad link IntRand
+	str	w0,	[x29, exit_tile_offset + xcoord_offset] // Storing w0 into stack ~ exit_tile_stuct.xcoord
 
-	mov	w0,	#0					// Moving 0 into w0
-	ldr	x9,	=height					// Loading x9 with address of height
-	ldr	w10,	[x9]					// Loading w10 with value of height
-	sub	w10,	w10,	#1				// Subtracting w10 by one
-	mov	w1,	w10					// Moving w10 into w1
-	bl	IntRand						// Branch and link IntRand
-	str	w0,	[x29, exit_tile_offset + xcoord_offset] // Store w0 into the stack (x-coord)
-
+	// y-coordinate
 	mov	w0,	#0					// Move 0 into w0
 	ldr	x9,	=width					// Load x9 with address of width
-	ldr	w10,	[x9]					// Load value of width into w10
-	sub	w10,	w10,	#1				// Subtracting one from w10
-	mov	w1,	w10					// Move w10 into w1
+	ldrsw	x9,	[x9]					// Load x9 with value of width
+	sub	x9,	x9,	#1				// Subtract x9 by one
+	mov	w1,	w9					// Move w9 into w0
 	bl	IntRand						// Branch and link IntRand
-	str	w0,	[x29, exit_tile_offset + ycoord_offset] // Store w0 into the stack (y-coord)
+	str	w0,	[x29, exit_tile_offset + ycoord_offset] // Storing w0 into stack ~ exit_tile_strcut.ycoord
+
+	// Adding exit-tile into the board
+	ldrsw	x9,	[x29, exit_tile_offset + xcoord_offset] // Loading x9 with xcoordinate of exit-tile
+	ldrsw	x10,	[x29, exit_tile_offset + ycoord_offset]	// Loading x10 with ycoordinate of exit-tile
+	ldr	x11,	=width					// Loading x11 with address of width
+	ldrsw	x11,	[x11]					// Loading x11 with value of width
+	mul	offset_r,	x9,	x11			// Multiply x9 and x11 and store it in offset_r
+	add	offset_r,	offset_r,	x10		// Add offset_r and x10
+	mov	x11,	cell_struct_size			// Move cell_struct_size into x11
+	mul	offset_r,	offset_r,	x11		// Multiply offset_r and x11
+	add	offset_r,	offset_r,	value_offset	// Add offset_r and value_offset
+
+	mov	x14,	#100					// Move 100 into x14
+	scvtf	d16,	x14					// Coverting value in x14 into a float and storing result in d16
+	str	d16,	[base_r, offset_r]			// Store d16 into base_r + offset_r
 	
+	// Populating board with positive-float point numbers
+	mov	i_r,	#0					// Move 0 into i_r
+	mov	j_r,	#0					// Move 0 into j_r
+	b	init_test					// Branch to init_test
+init_loop:
+
+	mov	j_r,	#0					// Move 0 to j_r
+	b	init_test2					// Branch to init_test2
+init_loop2:
+
+	// Calculating current offset
+	ldr	x14,	=width					// Loading x14 with address of width
+	ldrsw	x14,	[x14]					// Loading x14 with value of width
+	mul	offset_r,	i_r,	x14			// Multiplying i_r and x14 and storing result in offset_r
+	add	offset_r,	offset_r,	j_r		// Adding offset_r and j_r
+	mov	x14,	cell_struct_size			// Moving cell_struct_size into x14
+	mul	offset_r,	offset_r,	x14		// Multiplying offset_r by x14
+
+	// Initializing current cell to undiscovered (zero)
+	mov	w9,	#0					// Moving 0 into w9
+	strb	w9,	[base_r, offset_r]			// Storying a byte from w9 into the stack						
+	
+	add	offset_r,	offset_r,	value_offset	// Addig offset_r and value_offset
+
+	// Checking if current cell is exit tile
+	ldr	d15,	[base_r, offset_r]			// Loading d15 with value of the current cell
+	mov	x9,	100					// Moving 100 into x9
+	scvtf	d17,	x9					// Converting value into x9 to a float and storing it in d17
+norm_tile:
+	fcmp	d15,	d17					// Comparing d15 and d17
+	b.eq	end_norm_tile					// If d15 == d17, then branch to end_norm_tile
+	
+	mov	w0,	#0					// Moving 0 into w0
+	bl	FloatRand					// Branch annd link FloatRand
+	str	d0,	[base_r, offset_r]			// Store d0 into the current cell
+end_norm_tile:	
+	
+	add 	j_r,	j_r,	#1				// Increment j_r by one
+init_test2:
+	ldr	x9,	=width					// Load x9 with address of width
+	ldrsw	x9,	[x9]					// Load x9 with value of width
+	cmp	j_r,	x9					// Comparing j_r and x9
+	b.lt	init_loop2					// If j_r < x9, then branch to init_loop2
+	
+	add	i_r,	i_r,	#1				// Incrementing i_r by one
+init_test:	
+	ldr	x9,	=height					// Loading x9 with address of height
+	ldrsw	x9,	[x9]					// Loading x9 with value of height
+	cmp	i_r,	x9					// Comparing i_r and x9
+	b.lt	init_loop					// If i_r < x9, then branch to init_loop
+
 	// Calculating the number of range rewards to generate (< 20% of number of cells in the board)
 	ldr	x14,	=height					// Loading x14 with address of height
 	ldr	x15,	=width					// Loading x15 with address of width
@@ -345,66 +469,8 @@ InitializeGame:
 	udiv	x14,	x14,	x15				// Unsigned division of x14 and x15 store in x14
 	sub	x14,	x14,	#1				// Subract x14 by one
 	str	w14,	[x29,	double_range_size_offset]	// Store w14 into the stack (# of double range rewards)
-
-	// Populating the board with float-point random numbers and including the exit tile
-	mov	i_r,	#0					// Move 0 into j_r
-	mov	j_r,	#0					// Move 0 into i_r
-
-	b init_test						// Branch init_test
-init_loop:
-
-	mov	j_r,	#0					// Move 0 into j_r
-	b init_test2						// Branch init_test2
-init_loop2:
-
-	ldr	x14,	=width					// Load x14 with address of width
-	ldrsw	x14,	[x14]					// Load x14 with value of width
-	mul	x14,	i_r,	x14				// Multiply i_r by x14 and store it in x14
-	add	x14,	x14,	j_r				// Add x14 and j_r and store it in x14
-	mov	x15,	cell_struct_size			// Move cell_struct_size into x15
-	mul	x14,	x14,	x15				// Multiply x14 and x15 and store the result in x14
-
-	add	offset_r,	x14,	discovered_offset	// Add x14 and discovered_offset and store it in offset_r
-	strb	wzr,	[base_r, offset_r]			// Store wzr into the address base_r + offest_r 
-
-	add	offset_r,	x14,	value_offset		// Add x14 and value_offset and store it in offset_r
-
-i_if1:	ldrsw	x9,	[x29, exit_tile_offset + xcoord_offset] // Load x9 with value from the stack at x29 + exit_tile_offset + xcoord_offset
-	cmp	i_r,	x9					// Comparig i_r and x9
-	b.ne	i_e1						// If i_r != x9, then branch to i_e1
-	ldrsw	x9,	[x29, exit_tile_offset + ycoord_offset] // Load x9 with value from stack at x29 + exit_tile_offset + ycoord_offset
-	cmp	j_r,	x9					// Comparing j_r and x9
-	b.ne	i_e1						// If j_r != x9, then branch i_e1
-
-	// Exit Tile coordinate
-
-	mov	x9,	#100					// Move 100 into x9
-	scvtf	d16,	x9					// Convert x9 into float and store the result in d16
-	str	d16,	[base_r, offset_r]			// Store d16 onto the stack
-	
-	b	i_e_if1						// Branch to i_e_if1
-i_e1:
-	// Normal Tile Coordinate
-	
-	mov	w0,	#0					// Move 0 into w0
-	bl	FloatRand					// Branch and link FloatRand
-	str	d0,	[base_r, offset_r]			// Store d0 in the stack at base_r + offset_r
-
-i_e_if1:	
-	
-	add	j_r,	j_r,	#1				// Increment j_r by one
-init_test2:
-	ldr	x14,	=width					// Load address of width into x14
-	ldrsw	x14,	[x14]					// Load value of width into x14
-	cmp	j_r,	x14					// Compare j_r and x14
-	b.lt	init_loop2					// If j_r < x14, then branch init_loop2
-
-	add	i_r,	i_r,	#1				// Increment i_r by one
-init_test:
-	ldr	x14,	=height					// Load x14 with address of height
-	ldrsw	x14,	[x14]					// Load x14 with value of height
-	cmp	i_r,	x14					// Compare i_r and x14
-	b.lt	init_loop					// If i_r < x14, then branch init_loop
+	ldr	x9,	=db_cells				// Loading address of db_cells into x9
+	str	w14,	[x9]					// Storing number of double-range reward cells in db_cells
 
 	// Populating the board with double-range rewards
 
@@ -506,70 +572,73 @@ init_test3:
 	udiv	x14,	x14,	x15				// Unsigned division of x14 and x15 store in x14
 	sub	x14,	x14,	#1				// Subract x14 by one
 	str	w14,	[x29,	neg_floats_offset]		// Store w14 into the stack (# of negative float numbers)
-
+	ldr	x9,	=neg_cells				// Loading x9 with address of neg_cells
+	str	w14,	[x9]					// Storing number of negative cells in neg_cells
+	
 	// Populating board with negative float-numbers
-	mov	i_r,	#0
+	mov	i_r,	#0					// Move 0 into i_r
 init_loop4:
 
 	// Getting random x-pos
-	ldr	x9,	=height
-	ldrsw	x9,	[x9]
-	sub	x9,	x9,	#1
-	mov	w0,	#0
-	mov	w1,	w9
-	bl	IntRand
-	str	w0,	[x29,	n_float_offset + xcoord_offset]
+	ldr	x9,	=height					// Load x9 with address of height
+	ldrsw	x9,	[x9]					// Load x9 with value of height
+	sub	x9,	x9,	#1				// Subtracting x9 by one
+	mov	w0,	#0					// Movig 0 into w0
+	mov	w1,	w9					// Moving w9 into w1
+	bl	IntRand						// Branch and link IntRand
+	str	w0,	[x29,	n_float_offset + xcoord_offset]	// Store w0 into x29 + n_float_offset + xcoord_offset
 
 	// Getting random y-pos
-	ldr	x9,	=width
-	ldrsw	x9,	[x9]
-	sub	x9,	x9,	#1
-	mov	w0,	#0
-	mov	w1,	w9
-	bl	IntRand
-	str	w0,	[x29,	n_float_offset + ycoord_offset]
+	ldr	x9,	=width					// Load x9 with address of width
+	ldrsw	x9,	[x9]					// Load x9 with value of width
+	sub	x9,	x9,	#1				// Subtract x9 by one
+	mov	w0,	#0					// Move 0 into w0
+	mov	w1,	w9					// Move w9 into w1
+	bl	IntRand						// Branch and link IntRand
+	str	w0,	[x29,	n_float_offset + ycoord_offset] // Store w0 into x29 + n_float_offset + xcoord_offset
 
 	// Computing offset
-	ldrsw	x9,	[x29,	n_float_offset + xcoord_offset]
-	ldrsw	x10,	[x29,	n_float_offset + ycoord_offset]
-	ldr	x11,	=width
-	ldrsw	x11,	[x11]
+	ldrsw	x9,	[x29,	n_float_offset + xcoord_offset]	// Load x9 with value at x29 + n_float_offset + xcoord_offset
+	ldrsw	x10,	[x29,	n_float_offset + ycoord_offset]	// Load x19 with value at x29 + n_float_offst + ycoord_offset
+	ldr	x11,	=width					// Loading x11 with address of width
+	ldrsw	x11,	[x11]					// Loading x11 with value of width
 
-	mul	offset_r,	x9,	x11
-	add	offset_r,	offset_r,	x10
-	mov	x10,	cell_struct_size
-	mul	offset_r,	offset_r,	x10
-	add	offset_r,	offset_r,	value_offset	
+	mul	offset_r,	x9,	x11			// Multiplying x9 and x11 and storing result in offset_r
+	add	offset_r,	offset_r,	x10		// Adding offset_r and x10 and storing result in offset_r
+	mov	x10,	cell_struct_size			// Moving cell_struct_size to x10
+	mul	offset_r,	offset_r,	x10		// Multiplyig offset_r and x10
+	add	offset_r,	offset_r,	value_offset    // Adding offset_r and value_offset
 
-	ldr	d16,	[base_r, offset_r]
-
-	mov	x9,	0
-	scvtf	d17,	x9
-	fcmp	d16,	d17
-	b.lt	init_loop4
-
-	mov	x9,	100
-	scvtf	d17,	x9
-
-	fcmp	d16,	d17
-	b.eq	init_loop4
-
-	mov	x9,	75
-	scvtf	d17,	x9
-
-	fcmp	d16,	d17
-	b.eq	init_loop4
-
-	fneg	d16,	d16
-	str	d16,	[base_r, offset_r]
-
-	add	i_r,	i_r,	#1
-init_test4:
-	ldrsw	x9,	[x29,	neg_floats_offset]
-	cmp	i_r,	x9
-	b.lt	init_loop4
+	ldr	d16,	[base_r, offset_r]			// Loading d16 with value in base_r + offest_r (board[i][j])
 	
+	// Checking if the value is already negative
+	mov	x9,	0					// Move 0 into x9					
+	scvtf	d17,	x9					// Convert x9 into a float and store the result in d17
+	fcmp	d16,	d17					// Comparing d16 and d17
+	b.lt	init_loop4					// If d16 < d17, then branch to init_loop4
 
+	// Checking if the value is the exit tile
+	mov	x9,	100					// Move 100 into x9
+	scvtf	d17,	x9					// Convert x9 into a float and store the result in d17
+	fcmp	d16,	d17					// Comparing d16 and d17
+	b.eq	init_loop4					// if d16 == d17, then branch init_loop4
+
+	// Checking if the value is a double range reward
+	mov	x9,	75					// Move 75 into x9
+	scvtf	d17,	x9					// Convert x9 into a float and store the result in d17
+	fcmp	d16,	d17					// Comparing d16 and d17
+	b.eq	init_loop4					// If d16 == d17, then branch init_loop4
+
+	// If it is a number that can be coverted into negative:
+	fneg	d16,	d16					// Negating float-point value in d16
+	str	d16,	[base_r, offset_r]			// Storing d16 into stack at address base_r + offset_r (board[i][j] = val)
+
+	add	i_r,	i_r,	#1				// Increment i_f by one
+init_test4:
+	ldrsw	x9,	[x29,	neg_floats_offset]		// Load x9 with the number of negative numbers to be generated
+	cmp	i_r,	x9					// Comparing i_r and x9
+	b.lt	init_loop4					// If i_r < x9, then branch to init_loop4
+	
 	// Restoring calle registers
 	ldr	x19,	[x29,	r19_offset]			// Loading x19 with value in stack
 	ldr	x20,	[x29,	r20_offset]			// Loading x20 with value in stack
@@ -579,7 +648,8 @@ init_test4:
 	ldp 	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating memory
 	ret							// Returning to main
 
-/*--------------------------------------------------------------*/
+	/*--------------------------------------------------------------*/
+	
 	/*
 	Subroutine displays the 2D game board
 	It accepts the address of the board in x0
@@ -603,82 +673,92 @@ DisplayGame:
 	mov	i_r ,	#0					// Move 0 into i_r
 	mov	j_r,	#0					// Move 0 into j_r
 
-	b	disp_test					// Branch tp disp_test
+	b	disp_test
 disp_loop:
 
-	mov	j_r,	#0					// Move 0 into j_r
-	b	disp_test2					// Branch to disp_test2
+	mov	j_r,	#0
 disp_loop2:
 
-	ldr	x14,	=width					// Load x14 with address of width
-	ldr	x14,	[x14]					// Load x14 with value of width
-	mul	offset_r,	i_r,	x14			// Multiply i_r and x14 and store the result in offset_r
-	add	offset_r,	offset_r,	j_r		// Add offset_r and j_r 
-	mov	x14,	cell_struct_size			// Move cell_struct_size into x14
-	mul	offset_r,	offset_r,	x14		// Multiply offset_r by x14
+	ldr	x14,	=width
+	ldrsw	x14,	[x14]
+	mul	offset_r,	i_r,	x14
+	add	offset_r,	offset_r,	j_r
+	mov	x14,	cell_struct_size
+	mul	offset_r,	offset_r,	x14
 
-	ldrsb	w14,	[base_r]				// Load w14 with value at base_r + offset_r							possible error HERE!
-d_if1:	cmp	w14,	#1					// Compare w14 and 1
-	b.eq	d_e_if1						// If w14 != 1, then brach to d_e_if1
+	ldrsb	w9,	[base_r, offset_r]
 
-	// Cell is Discovered
-	ldr	x0,	=output2				// Load x0 with address of output2
-	bl	printf						// Branch and link printf
-	b	d_e_if1						// Branch to d_e_if1
-d_e1:	// Cell is Undiscovered
-	
-	add	offset_r,	offset_r,	value_offset	// Add offset_r and value_offset
+	cmp	w9,	wzr
+	b.ne	disp_discovered
+disp_undiscovered:
 
-	ldr	d16,	[base_r, offset_r]			// Load d16 with value in stack at address base_r + offset_r
+	ldr	x0,	=output2
+	bl	printf
+	b	end_disp
 
-	// Checking if cell is a normal, exit, or double range 
-	mov	x9,	#100					// Move 100 into x9
-	scvtf	d17,	x9					// Converting x9 into a float
-d2_if2: fcmp	d16,	d17					// Comparing d16 and d17					
-	b.ne	d2_e1						// If d16 != d17, then branch to d2_e1
+disp_discovered:
 
-	// Print '*' because it is exit tile
-	ldr	x0,	=output3				// Load x0 with address of output3
-	b	d2_e_if2					// Branch to d2_e_if2
-	
-d2_e1:	mov	x9,	#75					// Move 75 into x9
-	scvtf	d17,	x9					// Converting x9 into a float and storing it in d17
-	fcmp	d16,	d17					// Comparing d16 and d17
-	b.ne	d2_e2						// If d16 != d17, then branch to d2_e2
+	add	offset_r,	offset_r,	value_offset
+	ldr	d16,	[base_r, offset_r]
 
-	// Printg '$' because it is double-range reward
-	ldr	x0,	=output4				// Load x0 with address of output4
-	b	d2_e_if2					// Branch to d2_e_if2
-d2_e2:
-	// Normal Tile
-	ldr	x0,	=output1				// Load x0 with address of output1
-d2_e_if2:	
-	fmov	d0,	d16					// Move d16 into d0
-	bl	printf						// Branch and likn printf
-	
-	ldr	x0,	=output0				// Load x0 with address of output0
-	fmov	d0,	d16					// Move d16 into d0
-	bl	printf						// Branch and link printf 
-	
-d_e_if1:	
-	
-	add	j_r,	j_r,	#1				// Increment j_r by one
-disp_test2:
-	ldr	x14,	=width					// Load x14 with address of width
-	ldrsw	x14,	[x14]					// Load x14 with value of width
-	cmp	j_r,	x14					// Compare x14 and j_r
-	b.lt	disp_loop2					// If j_r < x14, then branch to disp_loop2
+	// Checking the type of cell
+p_exit_cell:
+	mov	x9,	100
+	scvtf	d17,	x9
+	fcmp	d16,	d17
+	b.ne	p_d_range_cell
 
-	ldr	x0,	=output1				// Load x0 with address of output1
-	bl	printf						// Branch and link printf 
+	ldr	x0,	=output3
+	bl	printf
+	b	end_disp
+		
+p_d_range_cell:
+	mov	x9,	75
+	scvtf	d17,	x9
+	fcmp	d16,	d17
+	b.ne	p_normal_cell
+
+	ldr	x0,	=output4
+	bl	printf
+	b	end_disp
+
+p_normal_cell:
+
+	mov	x9,	0
+	scvtf	d17,	x9
+	fcmp	d16,	d17
+	b.lt	negative
+positive:
+
+	ldr	x0,	=output7
+	bl	printf
+	b 	end_disp
 	
-	add	i_r,	i_r,	#1				// Increment i_r by one
-disp_test:	
-	ldr	x14,	=height					// Load x14 with address of height
-	ldrsw	x14,	[x14]					// Load x14 with value of height
-	cmp	i_r,	x14					// Compare i_r and x14
-	b.lt	disp_loop					// If i_r < x14, then branch disp_loop
+negative:
+
+	ldr	x0,	=output8
+	bl	printf
+
+end_disp:
 	
+	add	j_r,	j_r,	#1
+dis_test2:
+	ldr	x9,	=width
+	ldrsw	x9,	[x9]
+	cmp	j_r,	x9
+	b.lt	disp_loop2
+
+	// Printing a new line
+	ldr	x0,	=output1
+	bl	printf
+	
+	add	i_r,	i_r,	#1
+disp_test:
+	ldr	x9,	=height
+	ldrsw	x9,	[x9]
+	cmp	i_r,	x9
+	b.lt	disp_loop
+		
 	// Restoring calle-saved registers
 	ldr	x19,	[x29,	r19_offset]			// Load value of x19 from stack
 	ldr	x20,	[x29,	r20_offset]			// Load value of x20 from stack
@@ -687,22 +767,250 @@ disp_test:
 	
 	ldp 	x29,	x30,	[sp],	dealloc			// Restoring x29, x30, and deallocating memory
 	ret							// Return to main
-/*--------------------------------------------------------------*/	
+	
+	/*--------------------------------------------------------------*/
+
+	/*
+	Subroutine makes cells visible, updates double range reward count,
+	and adds score of each cell into partial score.
+	Arguments -> x0: Board address, x1: bombPos address and
+	x2: partial score address
+	Return: Nothing	
+	*/
+
+	dbl_rng_count_size = 4
+	par_score_addr = 8
+	
+	alloc = -((4 * reg_size) + 16 + coord_struct_size + dbl_rng_coung_size + par_score_addr) & -16
+	dealloc = -alloc
+
+	actual_coord_offset = 56
+	dbl_rng_count_offset = 64
+	par_score_addr_offset = 68
+CalculateScoreHelper:
+	stp	x29,	x30,	[sp, -16]!
+	mov	x29,	sp
+
+	// Restoring calle-saved registers
+	str	x19,	[x29,	r19_offset]			// Store value of x19 in the stack
+	str	x20,	[x29,	r20_offset]			// Store value of x20 in the stack
+	str	x21,	[x29,	r21_offset]			// Store value of x21 in the stack
+	str	x22,	[x29,	r22_offset]			// Store value of x22 in the stack
+	str	x23,	[x29,	r23_offset]			// Store value of x23 in the stack
+
+	// Storing the board's address in base_r
+	mov	base_r,	x0					
+
+	// Making dbl_rng_count_offset = db_reward_count
+	ldr	x9,	=db_reward_count
+	ldrsw	x10,	[x9]
+	str	w10,	[x29, dbl_rng_count_offset]
+	str	wzr,	[x9]
+	
+	// Finding actual bomb position (for the explosion)
+	ldrsw	x9,	[x1, xcoord_offset]
+	ldrsw	x10,	[x1, ycoord_offset]
+	ldrsw	x11,	[x29, dbl_rng_count_offset]
+	lsl	x12,	#2,	x11
+	mov	tmp_r,	x12
+
+	sub	x9,	x9,	x12
+	sub	x10,	x10,	x12
+	str	w9,	[x29,	actual_coord_offset + xcoord_offset]
+	str	w10,	[x29,	actual_coord_offset + ycoord_offset]
+
+	// Storing partial score address
+	str	x2,	[x29,	par_score_addr_offset]
+
+	// Computing partial score and discovering tiles
+	mov	i_r,	#0
+	mov	j_r,	#0
+	b	csh_test
+csh_loop:
+
+	mov	j_r,	#0
+	b	csh_test2
+csh_loop2:
+
+	// Making sure tile is in the board
+
+	ldrsw	x9,	[x29, actual_coord_offset + xcoord_offset]	// Loading x9 with Actual xCoord value 
+	ldrsw	x10,	[x29, actual_coord_offset + y_coord_offset]	// Loadinng x10 with Actual yCoord value
+	ldr	x11,	=height						// Loading x11 with address of height
+	ldrsw	x11,	[x11]						// Loading x11 with value of height
+	ldr	x12,	=width						// Loading x12 with address of width
+	ldrsw	x12,	[x12]						// Loading x12 with value of width
+
+
+	cmp	x9,	#0
+	b.lt	e_in_board
+	cmp	x9,	x11
+	b.ge	e_in_board
+	cmp	x10,	#0
+	b.lt	e_in_board
+	cmp	x10,	x12
+	b.ge	e_in_board
+in_board:
+
+	// Calculating the offset
+	ldr	x9,	=width
+	ldrsw	x9,	[x9]
+	mul	offset_r,	i_r,	x9
+	add	offset_r,	offset_r,	j_r
+	mov	x10,	cell_struct_size
+	mul	offset_r,	offset_r,	x10
+	add	offset_r,	offset_r,	value_offset
+
+	ldr	d16,	[base_r, offset_r]
+	mov	x9,	75
+	scvtf	d17,	x9
+
+	//If double range reward
+	fcmp	d16,	d17
+	b.eq	db_rng
+
+	mov	x9,	100
+	scvtf	d17,	x9
+	
+	// If exit tile
+	fcmp	d16,	d17
+	b.eq	ext
+
+	// Else normal tile
+	b nrm
+	
+db_rng:
+
+	b	e_c
+ext:
+	
+	b	e_c
+nrm:
+
+
+e_c
+
+	// If exit tile
+
+	// If normal tile and not discovered
+
+	// Make cell visible
+		
+e_in_board:	
+	
+	add	j_r,	j_r,	#1
+csh_test2:
+	lsl	x9,	tmp_r,	#1
+	cmp	i_r,	x9
+	b.le	csh_loop2
+
+	
+	add	i_r,	i_r,	#1
+csh_test:
+	lsl	x9,	temp_r,	#1
+	cmp	i_r,	x9
+	b.le	csh_loop
+	
+	
+
+	// Restoring calle-saved registers
+	ldr	x19,	[x29,	r19_offset]			// Load value of x19 from stack
+	ldr	x20,	[x29,	r20_offset]			// Load value of x20 from stack
+	ldr	x21,	[x29,	r21_offset]			// Load value of x21 from stack
+	ldr	x22,	[x29,	r22_offset]			// Load value of x22 from stack
+	ldr	x23,	[x29,	r23_offset]			// Load value of x23 from stack
+
+	ldp	x29,	x30,	[sp],	16
+	ret
+		
+	/*--------------------------------------------------------------*/
+
+	/*
+	Subroutine calculates the score after a bomb is placed and "explodes" (it reveals cells as well)
+	Arguments: x0: address of board, d0: address of score, x1: lives address,
+	x2: bombs address, and x3: bombsPos address
+	Return: Nothing	
+	*/
+
+	addr_size = 8
+	part_score_size = 8
+
+	alloc = -((addr_size * 5) + 16 + part_score_size) & -16
+	dealloc = -alloc
+
+	board_addr_offset = 16					// Offset of board address
+	score_addr_offset = 24					// Offset of score address 
+	lives_addr_offset = 32					// Offset of lives address
+	bombs_addr_offset = 40					// Offset of bombs address
+	bomPos_addr_offset= 48					// Offset of bomPos struct address (Coord struct)
+	part_score_offset = 56
+	
+CalculateScore:
+	stp	x29,	x30,	[sp, alloc]!
+	mov	x29,	sp
+
+	// Storing all arguments in the stack
+	str	x0,	[x29, board_addr_offset]
+	str	x1,	[x29, score_addr_offset]
+	str	x2,	[x29, lives_addr_offset]
+	str	x3,	[x29, bombs_addr_offset]
+	str	x4,	[x29, bomPos_addr_offset]
+
+	// Decrementing the number of bombs by one
+	ldr	x10,	[x29, bombs_addr_offset]
+	ldr	w9,	[x10]
+	sub	w9,	w9,	#1
+	str	w9,	[x10]
+
+	// Initializing partial score variable
+	mov	x10,	#0
+	scvtf	d16,	x10
+	str	d16,	[x29, part_score_offset]
+	
+	// Calling CalculateScoreHelper
+	ldr	x9,	[x29,	board_addr_offset]
+	ldr	x10,	[x29,	bomPos_addr_offset]
+
+	mov	x0,	x9
+	mov	x1,	x10
+	add	x2,	x29,	part_score_offset
+	bl	CalculateScoreHelper
+
+	ldp	x29,	x30,	[sp],	dealloc	
+	ret
+
+	/*--------------------------------------------------------------*/
+
+DisplayLeaderboard:
+	stp	x29,	x30,	[sp, -16]!
+	mov	x29,	sp
+
+
+	ldp	x29, 	x30,	[sp],	16
+	ret
+	
+	/*--------------------------------------------------------------*/
+	
 	name_size = 8						// Size (in bytes) of name
 	lives_size = 4						// Size (in bytes) of lives
-	score_size = 4						// Size (in bytes) of score
+	score_size = 8						// Size (in bytes) of score
 	bombs_size = 4						// Size (in bytes) of bombs
 	board_addr_size = 8					// Size (in bytes) of the board's address
+	xPos_size = 4						// Size (in bytes) of xPos char string
+	yPos_size = 4						// Size (in bytes) of yPos char string
 	
-	alloc = -(16 + name_size + lives_size + score_size + bombs_size + board_addr_size) & -16 // Total amount of bytes to allocate for stack frame of main (quadword aligned)
-	dealloc = -alloc						      			 // Total amount of bytes to deallocate for the stack frame of main (quadword alignned) 	
+	alloc = -(coord_struct_size + xPos_size + yPos_size + 16 + name_size + lives_size + score_size + bombs_size + board_addr_size) & -16 // Total amount of bytes to allocate for stack frame of main (quadword aligned)
+	dealloc = -alloc						      			 			 		     // Total amount of bytes to deallocate for the stack frame of main (quadword alignned) 	
 
 	name_offset = 16					// Player Name offset
 	lives_offset = 24					// Lives offset
 	score_offset = 28					// Score offset
-	bombs_offset = 32					// Bombs offset
-	board_addr_offset = 36					// Board offset
-
+	bombs_offset = 36					// Bombs offset
+	board_addr_offset = 40					// Board offset
+	xPos_offset = 48					// Offset of xPos char array
+	yPos_offset = 52					// Ofsset of yPos char array
+	bombPos_offset = 56					// Offset of bombPos struct 
+	
 	// Main subroutine in charge of running all the code
 main:	stp	x29,	x30,	[sp, alloc]!			// Alocating alloc bytes on the stack
 	mov	x29,	sp              			// Making x29 "point" to sp
@@ -726,9 +1034,9 @@ e_if_a:
 	mov	i_r,	2					// Moving 2 into i_r
 	ldr	x0,	[base_r, i_r, LSL 3]			// Loading x0 with address in base_r + (i_r * 8)
 	bl	atoi						// Branch and link atoi
-	mov	w14,	w0					// Moving integer result w0 into w4
+	mov	x14,	x0					// Moving integer result x0 into x14
 
-if_b:	cmp	w14,	#10					// Comparig x14 to #10
+if_b:	cmp	x14,	#10					// Comparig x14 to #10
 	b.ge	e_if_b						// If x14 >= 10 thenn branch to e_if_b
 
 	ldr	x0,	=error1					// Loading register x0 with address  of error1
@@ -767,7 +1075,9 @@ e_if_c:
 	str	w14,	[x29, lives_offset]			// Initializing lives to 3
 
 	// SCORE
-	str	wzr,	[x29,	score_offset]			// Initializing	score to 0
+	mov	x14,	#0
+	scvtf	d16,	x14
+	str	d16,	[x29,	score_offset]			// Initializing	score to 0
 	
 	// BOMBS
 	mov	w14,	#3					// Moving 3 into w14
@@ -777,53 +1087,114 @@ e_if_c:
 	bl	sRand						// Branch and link sRand
 	
 	// BOARD
-	ldr	x9,	=height
-	ldr	x10,	=width
-	ldrsw	x14,	[x9]
-	ldrsw	x15,	[x10]
-	mul	x14,	x14,	x15
-	mov	x11,	cell_struct_size
-	mul	x14,	x14,	x11
-	sub	x14,	xzr,	x14
-	and	x14,	x14,	#-16
-	add	sp,	sp,	x14
+	ldr	x9,	=height					// Load x9 with address of height
+	ldr	x10,	=width					// Load x10 with address of width
+	ldrsw	x14,	[x9]					// Load x14 with value of height
+	ldrsw	x15,	[x10]					// Load x15 with value of width
+	mul	x14,	x14,	x15				// Multiplying x14 and x15 and storing result in x14
+	mov	x11,	cell_struct_size			// Moving cell_struct_size into x11
+	mul	x14,	x14,	x11				// Multiplying x14 and x11 and storing result in x14
+	sub	x14,	xzr,	x14				// Subracting xzr and x14 (res -> -x14)
+	and	x14,	x14,	#-16				// Anding x14 and -16 (quadword aligned)
+	add	sp,	sp,	x14				// Add sp and x14 (allocating memory for the board)
 
-	// Storing base address of board
-	mov	x14,	sp
-	str	x14,	[x29,	board_addr_offset]
+	// Storing base address of board	
+	mov	x14,	sp					// Moving sp into x14
+	str	x14,	[x29,	board_addr_offset]		// Storinng x14 in the stack at x29 + board_addr_offset
+
+	// Initializing game board
+	ldr	x14,	[x29,	board_addr_offset]
+	mov	x0,	x14					// Adding x29 and board_addr_offset and storing result in x0
+	bl	InitializeGame					// Branch and link InitializeGame
 
 	
-	// Initializing game board
-	add	x0,	x29,	board_addr_offset	
-	bl	InitializeGame
+	// Printing uncovered board (for grading)
+	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
+	bl	UncoveredBoard					// Branch and link UnocoveredBoard
 
-	add	x0,	x29,	board_addr_offset	
-	bl	UncoveredBoard
+	ldr	x0,	=output1				// Load x0 with address of output1
+	bl	printf						// Branch and link printf
 
-	ldr	x0,	=output1
+	// Printing covered board
+	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
+	bl	DisplayGame					// Branch and link DisplayGame
+	
+	// Asking player if he/she wants to see the leaderboard
+	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
+	
+//main_loop:
+
+	// Asking for x-coordinate of bomb
+	ldr	x0,	=output12
 	bl	printf
 
-	add	x0,	x29,	board_addr_offset
-	bl	DisplayGame
+	mov	offset_r,	bombPos_offset
+	add	offset_r,	offset_r,	xcoord_offset		
+	ldr	x0,	=input0
+	add	x1,	x29,	offset_r			
+	bl	scanf
+
+	// Asking for y-coordinate of bomb
+	ldr	x0,	=output13
+	bl	printf
+
+	mov	offset_r,	bombPos_offset
+	add	offset_r,	offset_r,	ycoord_offset		
+	ldr	x0,	=input0
+	add	x1,	x29,	offset_r			
+	bl	scanf
+
+	// Calling calculate score
+	ldr	x0,	[x29,	board_addr_offset]
+	add	x1,	x29,	score_offset
+	add	x2,	x29,	lives_offset
+	add	x3,	x29,	bombs_offset
+	add	x14,	x29,	bombPos_offset
+	bl	CalculateScore
+	
+
+/*	
+main_test:
+	ldrsw	x9,	[x29,	lives_offset]
+	cmp 	x9,	#0
+	b.le	end_main_loop
+	ldr	x9,	=exit_tile_f
+	ldrsb	w10,	[x9]
+	cmp 	w10,	#1
+	b.eq	end_main_loop
+	ldrsw	x9,	[x29,	bombs_offset]
+	cmp	x9,	#0
+	b.lt	end_main_loop
+	b	main_loop
+end_main_loop:	
+*/
+
+	// Asking play if he/she wants to see the leaderboard
+	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
+	
 	
 	// Deallocating memory for the 2D board
-	ldr	x9,	=height
-	ldr	x10,	=width
-	ldrsw	x14,	[x9]
-	ldrsw	x15,	[x10]
-	mul	x14,	x14,	x15
-	mov	x11,	cell_struct_size
-	mul	x14,	x14,	x11
-	sub	x14,	xzr,	x14
-	and	x14,	x14,	#-16
-	sub	sp,	sp,	x14
+	ldr	x9,	=height					// Load x9 with address of height			
+	ldr	x10,	=width					// Load x10 with address of width
+	ldrsw	x14,	[x9]					// Load x14 with value of height 
+	ldrsw	x15,	[x10]					// Load x15 with value of width
+	mul	x14,	x14,	x15				// Multiplying x14 and x15 and storing result in x14
+	mov	x11,	cell_struct_size			// Moving cell_struct_size into x11
+	mul	x14,	x14,	x11				// Multiplying x14 and x11 and storing result in x14
+	sub	x14,	xzr,	x14				// Subtracting 0 and x14
+	and	x14,	x14,	#-16				// Anding x14 and -16 (quadword aligned)
+	sub	sp,	sp,	x14				// Subtracting sp and x14 (deallocating memory)
 
-	ldp	x29,	x30,	[sp],	dealloc  		// Deallocating 16 bytes memory previously allocated for subroutine main
+	ldp	x29,	x30,	[sp],	dealloc  		// Deallocating "dealloc" bytes memory previously allocated for subroutine main
 	ret                     				// Returning to operating system
 
 	.data                    				// Defining variables
 height:		.int	0					// Height ~ int variable declared (initially zero)
 width:		.int	0					// Width ~ in variable declared (initially zero)
 seconds: 	.long	0                 			// Defining a long variable initialized to zero
+neg_cells:	.int	0					// Definig and int variable initialized to zero
+db_cells:	.int 	0					// Defining an int variable initialized to zero
+db_reward_count:.int	0					// Defining an int variable initialized to zero
+exit_tile_f:	.byte 	0					// Defining a byte variable initialized to zero (false)
 	
 	
