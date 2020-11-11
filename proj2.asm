@@ -19,8 +19,10 @@ output15:	.string "\nBoom!! You found %d double range reward(s) (apply to next b
 output16:	.string "Oops! You loose a life because score is <= 0\n\n"
 output17:	.string "Total uncovered score of %.2f points\n\n"
 output18:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
-output19:	.string "Test Number: %f\n"
-output20:	.string  "Your name is: %s\n"
+output19:	.string "\n\nCongratulations, you won!!\n\n"
+output20:	.string "\n\nGame Over, You lose !!\n\n"
+output21:	.string "Test Number: %f\n"
+output22:	.string  "Your name is: %s\n"
 error0:		.string "Not enough arguments provided!\n"
 error1:		.string "Height and Width have to be >=10\n"
 input0:		.string "%d"
@@ -218,8 +220,9 @@ e_if_float_rand2:
 	Does not return anything
 	*/
 
+	// Number of bytes to allocate for the stack frame of the subroutine (quadword aligned)
 	alloc = -(reg_size + reg_size + reg_size + reg_size + reg_size + 16) & -16
-	dealloc = -alloc
+	dealloc = -alloc					// Number of bytes to deallocate (quadword aligned)
 UncoveredBoard:	
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes
 	mov	x29,	sp					// Making x29 point to sp
@@ -352,17 +355,18 @@ uboard_test:
 	Does not return anything
 	*/
 	
-	double_range_bytes = 4
-	neg_floats_size = 4
+	double_range_bytes = 4					// Size (in bytes) of number of double range rewards.
+	neg_floats_size = 4					// Size (in bytes) of number of negative floats.
 
+	// Number of bytes to allocate for the stack frame of the subroutine (quadword aligned)
 	alloc = -(double_range_bytes + neg_floats_size + coord_struct_size + coord_struct_size + reg_size + reg_size + reg_size + reg_size + coord_struct_size  + 16) & -16
-	dealloc = -alloc
+	dealloc = -alloc					// Number of bytes to deallocate at the end (quadword aligned)
 
-	exit_tile_offset = 48			// Struct to store x-coord and y-coordinates of exit cell
-	double_range_size_offset = 56		// Number of double-range rewards to generate
-	neg_floats_offset = 60			// Number of negative numbers to generate
-	rng_reward_offset = 64			// Struct to store x-coord and y-coordinates of exit cell
-	n_float_offset = 72			// Struct to store x-cood and y-coordinates of negative cells
+	exit_tile_offset = 48					// Struct to store x-coord and y-coordinates of exit cell
+	double_range_size_offset = 56				// Number of double-range rewards to generate
+	neg_floats_offset = 60					// Number of negative numbers to generate
+	rng_reward_offset = 64					// Struct to store x-coord and y-coordinates of exit cell
+	n_float_offset = 72					// Struct to store x-cood and y-coordinates of negative cells
 	
 InitializeGame:
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes 
@@ -662,16 +666,17 @@ init_test4:
 	Note: It displays the board as "hidden"	
 	*/
 
-	lives_size = 4
-	score_size = 8
-	bombs_size = 4
-	
-	alloc = -(lives_size + score_size + bombs_size + reg_size + reg_size + reg_size + reg_size + 16) & -16
-	dealloc = -alloc
+	lives_size = 4						// Size of lives local variable
+	score_size = 8						// Size of score local variable
+	bombs_size = 4						// Size of bombs local variable
 
-	lives_offset = 48
-	score_offset = 52
-	bombs_offset = 60
+	// Number of bytes to allocate for the stack frame of the subroutine (quadword aligned)
+	alloc = -(lives_size + score_size + bombs_size + reg_size + reg_size + reg_size + reg_size + 16) & -16
+	dealloc = -alloc					// Number of bytes to deallocate
+
+	lives_offset = 48					// Offset to get value of lives
+	score_offset = 52					// Offset to get value of score
+	bombs_offset = 60					// Offset to get value of bombs
 	
 DisplayGame:
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes
@@ -685,105 +690,105 @@ DisplayGame:
 
 	mov	base_r,	x0					// Move x0 into base_r (base of board)
 
-	str	w1,	[x29, lives_offset]
-	str	d0,	[x29, score_offset]
-	str	w2,	[x29, bombs_offset]
+	str	w1,	[x29, lives_offset]			// Storing w1 into lives local variable
+	str	d0,	[x29, score_offset]			// Storing d0 into score local variable
+	str	w2,	[x29, bombs_offset]			// Storing w2 into bombs local variable
 
 	mov	i_r ,	#0					// Move 0 into i_r
 	mov	j_r,	#0					// Move 0 into j_r
 
-	b	disp_test
+	b	disp_test					// Branch to disp_test
 disp_loop:
 
-	mov	j_r,	#0
+	mov	j_r,	#0					// Move 0 into j_r
 disp_loop2:
 
-	ldr	x14,	=width
-	ldrsw	x14,	[x14]
-	mul	offset_r,	i_r,	x14
-	add	offset_r,	offset_r,	j_r
-	mov	x14,	cell_struct_size
-	mul	offset_r,	offset_r,	x14
+	ldr	x14,	=width					// Load x14 with address of width
+	ldrsw	x14,	[x14]					// Load x14 with value of width
+	mul	offset_r,	i_r,	x14			// Multiply i_r and x14 and store result in offset_r
+	add	offset_r,	offset_r,	j_r		// Addinng offset_r and j_r
+	mov	x14,	cell_struct_size			// Moving cell_struct_size into x14
+	mul	offset_r,	offset_r,	x14		// Multiply offset_r and x14
 
-	ldrsb	w9,	[base_r, offset_r]
+	ldrsb	w9,	[base_r, offset_r]			// Load	w9 with discovered value of current cell
 
-	cmp	w9,	wzr
-	b.ne	disp_discovered
+	cmp	w9,	wzr					// Comparing w9 with wzr
+	b.ne	disp_discovered					// If w9 != 0, then branch to disp_discovered
 disp_undiscovered:
 
-	ldr	x0,	=output2
-	bl	printf
-	b	end_disp
+	ldr	x0,	=output2				// Load x0 with address of output2
+	bl	printf						// Branch and link printf
+	b	end_disp					// Branch end_disp
 
 disp_discovered:
 
-	add	offset_r,	offset_r,	value_offset
-	ldr	d16,	[base_r, offset_r]
+	add	offset_r,	offset_r,	value_offset	// Adding offset_r and value_offset and storing result in offset_r
+	ldr	d16,	[base_r, offset_r]			// Load d16 with value of current cell
 
 	// Checking the type of cell
 p_exit_cell:
-	mov	x9,	100
-	scvtf	d17,	x9
-	fcmp	d16,	d17
-	b.ne	p_d_range_cell
+	mov	x9,	100					// Move 100 into x9
+	scvtf	d17,	x9					// Convert value in x9 into a float
+	fcmp	d16,	d17					// Comparing d17 and d16
+	b.ne	p_d_range_cell					// If d17 != d16, then branch to p_d_range_cell
 
-	ldr	x0,	=output3
-	bl	printf
-	b	end_disp
+	ldr	x0,	=output3				// Load x0 with address of output3
+	bl	printf						// Branch and link printf
+	b	end_disp					// Branch end_disp
 		
 p_d_range_cell:
-	mov	x9,	75
-	scvtf	d17,	x9
-	fcmp	d16,	d17
-	b.ne	p_normal_cell
+	mov	x9,	75					// Move 75 into x9
+	scvtf	d17,	x9					// Convert value in x9 into a float and store it in d17
+	fcmp	d16,	d17					// Comparinng d16 and d17
+	b.ne	p_normal_cell					// If d16 != d17, then branch to p_normal_cell
 
-	ldr	x0,	=output4
-	bl	printf
-	b	end_disp
+	ldr	x0,	=output4				// Load x0 with address of output4
+	bl	printf						// Branch and link printf
+	b	end_disp					// Branch end_disp
 
 p_normal_cell:
 
-	mov	x9,	0
-	scvtf	d17,	x9
-	fcmp	d16,	d17
-	b.lt	negative
+	mov	x9,	0					// Move 0 into x9
+	scvtf	d17,	x9					// Convert value in x9 into a float and store it in d17
+	fcmp	d16,	d17					// Comparing d16 and d17
+	b.lt	negative					// If d16 < d17 (0.0), then branch to negative 
 positive:
 
-	ldr	x0,	=output7
-	bl	printf
-	b 	end_disp
+	ldr	x0,	=output7				// Load x0 with the address of output7
+	bl	printf						// Branch and link printf
+	b 	end_disp					// Branch end_disp
 	
 negative:
 
-	ldr	x0,	=output8
-	bl	printf
+	ldr	x0,	=output8				// Load x0 with address of output8
+	bl	printf						// Branch and link printf
 
 end_disp:
 	
-	add	j_r,	j_r,	#1
+	add	j_r,	j_r,	#1				// Incrementing j_r by one
 dis_test2:
-	ldr	x9,	=width
-	ldrsw	x9,	[x9]
-	cmp	j_r,	x9
-	b.lt	disp_loop2
+	ldr	x9,	=width					// Load x9 with address of width
+	ldrsw	x9,	[x9]					// Load x9 with value of width
+	cmp	j_r,	x9					// Comparing j_r and x9
+	b.lt	disp_loop2					// If j_r < x9, then branch to disp_loop2
 
 	// Printing a new line
-	ldr	x0,	=output1
-	bl	printf
+	ldr	x0,	=output1				// Load x0 with address of output1
+	bl	printf						// Branch and link printf
 	
-	add	i_r,	i_r,	#1
+	add	i_r,	i_r,	#1				// Incrementing i_r by one
 disp_test:
-	ldr	x9,	=height
-	ldrsw	x9,	[x9]
-	cmp	i_r,	x9
-	b.lt	disp_loop
+	ldr	x9,	=height					// Load x9 with address of height
+	ldrsw	x9,	[x9]					// Load x9 with value of height
+	cmp	i_r,	x9					// Comparing i_r and x9
+	b.lt	disp_loop					// If i_r < x9, then branch disp_loop
 
 	// Printing summary of score, lives, and bombs
-	ldr	x0,	=output18
-	ldr	x1,	[x29, lives_offset]
-	ldr	d0,	[x29, score_offset]
-	ldr	x2,	[x29, bombs_offset]
-	bl	printf
+	ldr	x0,	=output18				// Load x0 with address of output18
+	ldr	x1,	[x29, lives_offset]			// Load x1 with value of lives
+	ldr	d0,	[x29, score_offset]			// Load d0 with value of score
+	ldr	x2,	[x29, bombs_offset]			// Load x2 with value of x2
+	bl	printf						// Branch and link printf
 
 	// Restoring calle-saved registers
 	ldr	x19,	[x29,	r19_offset]			// Load value of x19 from stack
@@ -804,20 +809,21 @@ disp_test:
 	Return: Nothing	
 	*/
 
-	dbl_rng_count_size = 4
-	par_score_addr = 8
-	org_act_y_size = 4
-	
-	alloc = -((6 * reg_size) + 16 + coord_struct_size + dbl_rng_count_size + par_score_addr + org_act_y_size) & -16
-	dealloc = -alloc
+	dbl_rng_count_size = 4					// Size of local variable double range count
+	par_score_addr = 8					// Size of the address of partial score variable
+	org_act_y_size = 4					// Size of original actual y-coordinate
 
-	actual_coord_offset = 64
-	dbl_rng_count_offset = 72
-	par_score_addr_offset = 76
-	org_act_y_offset = 84
+	// Number of bytes to allocate for the stack frame of the subroutine (quadword aligned)
+	alloc = -((6 * reg_size) + 16 + coord_struct_size + dbl_rng_count_size + par_score_addr + org_act_y_size) & -16
+	dealloc = -alloc					// Number of bytes to dealloc (quadword aligned)
+
+	actual_coord_offset = 64				// Offset of actual coordiates struct local variable
+	dbl_rng_count_offset = 72				// Offset of double range count local variable
+	par_score_addr_offset = 76				// Offset of partial score address
+	org_act_y_offset = 84					// Offset of orignial actual y cordinate 
 CalculateScoreHelper:
-	stp	x29,	x30,	[sp, alloc]!
-	mov	x29,	sp
+	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes
+	mov	x29,	sp					// Moving sp into x29
 
 	// Storing calle-saved registers
 	str	x19,	[x29,	r19_offset]			// Store value of x19 in the stack
@@ -828,161 +834,187 @@ CalculateScoreHelper:
 	str	x24,	[x29,	r24_offset]			// Store value of x24 in the stack
 
 	// Storing the board's address in base_r
-	mov	base_r,	x0
+	mov	base_r,	x0					// Moving x0 into base_r
 
 	// Making dbl_rng_count = db_reward_count
-	ldr	x9,	=db_reward_count
-	ldrsw	x10,	[x9]
-	str	w10,	[x29, dbl_rng_count_offset]
-	str	wzr,	[x9]
+	ldr	x9,	=db_reward_count			// Load x9 with addres of db_reward_count
+	ldrsw	x10,	[x9]					// Load x10 with value of db_reward_count
+	str	w10,	[x29, dbl_rng_count_offset]		// Store w10 into dbl_rng_count local var
+	str	wzr,	[x9]					// Storing 0 into db_reward_count
 
 	// Finding actual bomb position
-	ldrsw	x9,	[x1, xcoord_offset]
-	ldrsw	x10,	[x1, ycoord_offset]
-	ldrsw	x11,	[x29, dbl_rng_count_offset]
+	ldrsw	x9,	[x1, xcoord_offset]			// Loading x9 with value of bombPos.xcoord
+	ldrsw	x10,	[x1, ycoord_offset]			// Loading x10 with value of bombPos.ycoord
+	ldrsw	x11,	[x29, dbl_rng_count_offset]		// Loading x11 with value of dbl_rng_count
 
-	mov	x13,	#1
-	lsl	tmp_r,	x13,	x11
+	mov	x13,	#1					// Moving #1 into x13
+	lsl	tmp_r,	x13,	x11				// Left shit x13 by x11
 
-	sub	x9,	x9,	tmp_r
-	sub	x10,	x10,	tmp_r
+	sub	x9,	x9,	tmp_r				// Subtract x9 and tmp_r and store  result in x9
+	sub	x10,	x10,	tmp_r				// Structract x10 and tmp_r and store result in x10
 
+	// Storing w9 into actual_coord.xcoord
 	str	w9,	[x29, actual_coord_offset + xcoord_offset]
+
+	// Storing w10 into actual_coord.ycoord
 	str	w10,	[x29, actual_coord_offset + ycoord_offset]
-	str	w10,	[x29, org_act_y_offset]
+	str	w10,	[x29, org_act_y_offset]			// Storing w10 into org_act_y_offset
 	
 	// Storing partial score address
-	str	x2,	[x29,	par_score_addr_offset]
+	str	x2,	[x29,	par_score_addr_offset]		// Storing x2 into par_score_addr (address of partial score variable)
 	
 	// Computing partial score and discovering tiles
-	mov	i_r,	#0
-	mov	j_r,	#0
-	b	csh_test
+	mov	i_r,	#0					// Moving 0 into i_r
+	mov	j_r,	#0					// Moving 0 into j_r
+	b	csh_test					// Branch to csh_test
 csh_loop:
 	
 	// Resetting the value of actual-y coordinate for the next iteration
-	ldrsw	x9,	[x29, org_act_y_offset]
+	ldrsw	x9,	[x29, org_act_y_offset]			// Loading x9 with value of org_act_y
+
+	// Storing value in w9 into actual_coord.ycoord
 	str	w9,	[x29, actual_coord_offset + ycoord_offset]
-	mov	j_r,	#0
-	b	csh_test2
+	
+	mov	j_r,	#0					// Moving 0 into j_r
+	b	csh_test2					// Branch to csh_test2
 csh_loop2:
 
 	// Making sure tile is in the board
+	// Load x9 with value actual_coord.xcoord
 	ldrsw	x9,	[x29,	actual_coord_offset + xcoord_offset]
-	ldrsw	x10,	[x29,	actual_coord_offset + ycoord_offset]
-	ldr	x11,	=height
-	ldrsw	x11,	[x11]
-	ldr	x12,	=width
-	ldrsw	x12,	[x12]
 
-	cmp	x9,	#0
-	b.lt	e_in_board
-	cmp	x9,	x11
-	b.ge	e_in_board
-	cmp	x10,	#0
-	b.lt	e_in_board
-	cmp	x10,	x12
-	b.ge	e_in_board
+	// Load x10 with value actual_coord.ycoord
+	ldrsw	x10,	[x29,	actual_coord_offset + ycoord_offset]
+	ldr	x11,	=height					// Loading x11 with address of height
+	ldrsw	x11,	[x11]					// Loading x11 with value of height
+	ldr	x12,	=width					// Loading x12 with address of width
+	ldrsw	x12,	[x12]					// Loading x12 with value of width
+
+	cmp	x9,	#0					// Comparing x9 and #0
+	b.lt	e_in_board					// If x9 < 0, then branch to e_in_board
+	cmp	x9,	x11					// Comparing x9 and x11
+	b.ge	e_in_board					// If x9 >= x11, then branch to e_in_board
+	cmp	x10,	#0					// Comparing x10 annd #0
+	b.lt	e_in_board					// If x10 < 0, then branch to e_in_board 
+	cmp	x10,	x12					// Comparing x10 and x12 
+	b.ge	e_in_board					// If x10 >= 12, then branch to e_in_board
 in_board:	
 
 	// Calculating the offset
-	ldr	x9,	=width							// Loading x9 with address of width
-	ldrsw	x9,	[x9]							// Loading x9 with value of width
-	ldrsw	x10,	[x29, actual_coord_offset + xcoord_offset]		// Loading x10 with value of actual x-coordinate
-	ldrsw	x11,	[x29, actual_coord_offset + ycoord_offset]		// Loading x11 with value of actual y-coordinate
+	ldr	x9,	=width					// Loading x9 with address of width
+	ldrsw	x9,	[x9]					// Loading x9 with value of width
 
-	mul	offset_r,	x10,	x9					// Multiplying x10 and x9
-	add	offset_r,	offset_r,	x11				// Adding offset_r and x11
-	mov	x12,	cell_struct_size					// Moving cell_struct_size into x12
-	mul	offset_r,	offset_r,	x12				// Multiplying offset_r with x12
-	add	offset2_r,	offset_r,	discovered_offset		// Adding offset_r and discovered_offset and storing result in offset2_r
-	add	offset_r,	offset_r,	value_offset			// Adding offset_r and value_offset
+	// Loading x10 with value actual_coord.xcoord
+	ldrsw	x10,	[x29, actual_coord_offset + xcoord_offset]
 
-	ldr	d16,	[base_r, offset_r]
-	mov	x9,	75
-	scvtf	d17,	x9
+	// Loading x11 with value of actual_coord.ycoord
+	ldrsw	x11,	[x29, actual_coord_offset + ycoord_offset]		
+
+	mul	offset_r,	x10,	x9			// Multiplying x10 and x9
+	add	offset_r,	offset_r,	x11		// Adding offset_r and x11
+	mov	x12,	cell_struct_size			// Moving cell_struct_size into x12
+	mul	offset_r,	offset_r,	x12		// Multiplying offset_r with x12
+
+	// Adding offset_r and discovered_offset and storing result in offset2_r
+	add	offset2_r,	offset_r,	discovered_offset
+
+	// Adding offset_r and value_offset
+	add	offset_r,	offset_r,	value_offset			
+
+	ldr	d16,	[base_r, offset_r]			// Loading d16 with value of current cell
+	mov	x9,	75					// Movig 75 into x9
+	scvtf	d17,	x9					// Converting value in x9 to a float and storing it in d17
 
 	//If double range reward
-	fcmp	d16,	d17
-	b.eq	db_rng
+	fcmp	d16,	d17					// Comparing d16 and d17
+	b.eq	db_rng						// If d16 == d17, then branch to db_rng
 
-	mov	x9,	100
-	scvtf	d17,	x9
+	mov	x9,	100					// Moving 100 into x9
+	scvtf	d17,	x9					// Converting value in x9 into a float and storing it in d17
 	
 	// If exit tile
-	fcmp	d16,	d17
-	b.eq	ext
-
+	fcmp	d16,	d17					// Comparig d16 and d17
+	b.eq	ext						// If d16 == d17, then branch to ext
+		
 	// Else normal tile
-	b nrm
+	b nrm							// Brannch to nrm
 
 db_rng:
-	ldrsb	w9,	[base_r, offset2_r]
-	cmp	w9,	#1
-	b.eq	end_comparison
+	ldrsb	w9,	[base_r, offset2_r]			// Load w9 with discovered value of the current cell
+	cmp	w9,	#1					// Comparing w9 and #1
+	b.eq	end_comparison					// If w9 == #1, then branch to end_comparison
 
-	ldr	x10,	=db_reward_count
-	ldrsw	x11,	[x10]
-	add	x11,	x11,	#1
-	str	w11,	[x10]
+	ldr	x10,	=db_reward_count			// Load x10 with address of db_reward_count
+	ldrsw	x11,	[x10]					// Load x11 with value of db_reward_count
+	add	x11,	x11,	#1				// Incrementing x11 by one
+	str	w11,	[x10]					// Storing w11 back to db_reward_count
 
-	b	end_comparison
+	b	end_comparison					// Branch end_comparison
 ext:
-	ldr	x10,	=exit_tile_f
-	mov	w11,	#1
-	strb	w11,	[x10]
+	ldr	x10,	=exit_tile_f				// Load x10 with address of exit_tile_f 
+	mov	w11,	#1					// Moving #1 into w11	
+	strb	w11,	[x10]					// Storing w11 into x10 (exit_tile_f address)
 
-	b	end_comparison
+	b	end_comparison					// Branch to end_comparison
 nrm:	
-	ldrsb	w9,	[base_r, offset2_r]
-	cmp	w9,	#1
-	b.eq	end_comparison
+	ldrsb	w9,	[base_r, offset2_r]			// Load w9 with discovered value of current cell	
+	cmp	w9,	#1					// Comparing w9 and #1
+	b.eq	end_comparison					// If w9 == #1, then branch to end_comparison
 
-	ldr	x10,	[x29, par_score_addr_offset]
-	ldr	d16,	[x10]
-	ldr	d17,	[base_r, offset_r]
-	fadd	d16,	d16,	d17
-	str	d16,	[x10]
+	ldr	x10,	[x29, par_score_addr_offset]		// Load x10 with address of partial score var
+	ldr	d16,	[x10]					// Loading d16 with value of partial score
+	ldr	d17,	[base_r, offset_r]			// Loading d17 with value of current cell
+	fadd	d16,	d16,	d17				// Adding d16 and d17 ~ Storing result in d16
+	str	d16,	[x10]					// Storing d16 into partial score var
 
 end_comparison:
 
 	// Making current cell visible
-	mov	w9,	#1
-	strb	w9,	[base_r, offset2_r]
+	mov	w9,	#1					// Moving #1 into w9
+	strb	w9,	[base_r, offset2_r]			// Storing w9 into the current cell's discovered variable
 
 e_in_board:	
 
 	// Incrementing actual y-pos by one
+
+	// Loading x9 with value of actual_coord.ycoord
 	ldrsw	x9,	[x29, actual_coord_offset + ycoord_offset]
-	add	x9,	x9,	#1
+	add	x9,	x9,	#1				// Incrementing x9 by one
+
+	// Storing w9 into actual_coord.ycoord
 	str	w9,	[x29, actual_coord_offset + ycoord_offset]
 
-	add	j_r,	j_r,	#1
+	add	j_r,	j_r,	#1				// Incrementing j_r by one
 csh_test2:	
-	lsl	x9,	tmp_r,	#1
-	cmp	j_r,	x9
-	b.le	csh_loop2
+	lsl	x9,	tmp_r,	#1				// Left shift tmp_r by #1 ~ Store result in x9
+	cmp	j_r,	x9					// Comparing j_r and x9
+	b.le	csh_loop2					// If j_r <= x9, then branch csh_loop2
 
 	// Incrementing actual x-pos by one
-	ldrsw	x10,	[x29, actual_coord_offset + xcoord_offset]
-	add	x10,	x10,	#1
-	str	w10,	[x29, actual_coord_offset + xcoord_offset]
 
-	add	i_r,	i_r,	#1
+	// Loading x10 with value of actual_coord.xcoord
+	ldrsw	x10,	[x29, actual_coord_offset + xcoord_offset]
+	
+	add	x10,	x10,	#1				// Incrementing x10 by one
+
+	// Storing w10 into actual_coord.xcoord
+	str	w10,	[x29, actual_coord_offset + xcoord_offset]
+	
+	add	i_r,	i_r,	#1				// Incrementing i_r by one
 csh_test:	
-	lsl	x9,	tmp_r,	#1
-	cmp	i_r,	x9
-	b.le	csh_loop
+	lsl	x9,	tmp_r,	#1				// Left shift tmp_r by #1 ~ Store result in x9
+	cmp	i_r,	x9					// Comparing i_r and x9
+	b.le	csh_loop					// If i_r <= x9, then brach csh_loop
 
 	// Printing message if double-range rewards were found
-	ldr	x9,	=db_reward_count
-	ldrsw	x9,	[x9]
-	cmp	x9,	#0
-	b.le	csh_print_end
+	ldr	x9,	=db_reward_count			// Load x9 with address of db_reward_count
+	ldrsw	x9,	[x9]					// Load x9 with value of db_reward_count
+	cmp	x9,	#0					// Comparing x9 and #0
+	b.le	csh_print_end					// If x9 <= 0, then branch csh_print_end
 csh_print:
-	ldr	x0,	=output15
-	mov	x1,	x9
-	bl	printf
+	ldr	x0,	=output15				// Load x0 whith address of string output15
+	mov	x1,	x9					// Moving x9 into x1
+	bl	printf						// Branch and link printf
 csh_print_end:	
 	
 	// Restoring calle-saved registers
@@ -993,8 +1025,8 @@ csh_print_end:
 	ldr	x23,	[x29,	r23_offset]			// Load value of x23 from stack
 	ldr	x24,	[x29,	r24_offset]			// Load value of x24 from stack
 
-	ldp	x29,	x30,	[sp],	dealloc
-	ret
+	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating "dealloc" amount of bytes
+	ret							// Returning to main
 		
 	/*--------------------------------------------------------------*/
 
@@ -1005,11 +1037,11 @@ csh_print_end:
 	Return: Nothing	
 	*/
 
-	addr_size = 8
-	part_score_size = 8
+	addr_size = 8						// Size (in bytes) of an address
+	part_score_size = 8					// Size of partial score variable
 
-	alloc = -((addr_size * 5) + 16 + part_score_size) & -16
-	dealloc = -alloc
+	alloc = -((addr_size * 5) + 16 + part_score_size) & -16 // Number of bytes to allocate for the stack frame of the function (quadword aligned)
+	dealloc = -alloc					// Number of bytes to deallocate  (quadword aligned)
 
 	board_addr_offset = 16					// Offset of board address
 	score_addr_offset = 24					// Offset of score address 
@@ -1019,80 +1051,80 @@ csh_print_end:
 	part_score_offset = 56
 	
 CalculateScore:
-	stp	x29,	x30,	[sp, alloc]!
-	mov	x29,	sp
+	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes and storing x29,x30
+	mov	x29,	sp					// Moving sp into x29
 
 	// Storing all arguments in the stack
-	str	x0,	[x29, board_addr_offset]
-	str	x1,	[x29, score_addr_offset]
-	str	x2,	[x29, lives_addr_offset]
-	str	x3,	[x29, bombs_addr_offset]
-	str	x4,	[x29, bomPos_addr_offset]
+	str	x0,	[x29, board_addr_offset]		// Storing x0 into the board_addr local var 
+	str	x1,	[x29, score_addr_offset]		// Storing x1 into the score_addr local var
+	str	x2,	[x29, lives_addr_offset]		// Storing x2 into the lives_addr local var
+	str	x3,	[x29, bombs_addr_offset]		// Storing x3 into the bombs_addr local var
+	str	x4,	[x29, bomPos_addr_offset]		// Storing x4 into the bombPos_addr local var
 
 	// Decrementing the number of bombs by one
-	ldr	x10,	[x29, bombs_addr_offset]
-	ldr	w9,	[x10]
-	sub	w9,	w9,	#1
-	str	w9,	[x10]
+	ldr	x10,	[x29, bombs_addr_offset]		// Loading x10 with bombs' var addr
+	ldr	w9,	[x10]					// Loading w9 with value of bombs 
+	sub	w9,	w9,	#1				// Subtracting w9 by one
+	str	w9,	[x10]					// Storing result back into bomb's var addr
 
 	// Initializing partial score variable
-	mov	x10,	#0
-	scvtf	d16,	x10
-	str	d16,	[x29, part_score_offset]
+	mov	x10,	#0					// Move 0 into x10
+	scvtf	d16,	x10					// Converting value in x10 into a float and storing it in d16
+	str	d16,	[x29, part_score_offset]		// Storinng d16 into partial score local variable
 	
 	// Calling CalculateScoreHelper
-	ldr	x0,	[x29,	board_addr_offset]
-	ldr	x1,	[x29,	bomPos_addr_offset]
-	add	x2,	x29,	part_score_offset
-	bl	CalculateScoreHelper
-
+	ldr	x0,	[x29,	board_addr_offset]		// Load x0 with board's address
+	ldr	x1,	[x29,	bomPos_addr_offset]		// Load x1 with bombPos' address
+	add	x2,	x29,	part_score_offset		// Load x2 with address of partial score variable
+	bl	CalculateScoreHelper				// Branch and link CalculateScoreHelper
 
 	// Printing results of bomb explosion
-	ldr	d16,	[x29, part_score_offset]
-	ldr	x10,	[x29, score_addr_offset]
-	ldr	d17,	[x10]
-	mov	x12,	#1
-	mov	x13,	#1000
-	scvtf	d18,	x12
-	scvtf	d19,	x13
-	fdiv	d18,	d18,	d19
-	fadd	d16,	d17,	d16
-	fcmp	d16,	d18
-	b.gt	cs_e1
+	ldr	d16,	[x29, part_score_offset]		// Load d16 with value of partial score
+	ldr	x10,	[x29, score_addr_offset]		// Load x10 with address of score
+	ldr	d17,	[x10]					// Load d17 with value of score
+	mov	x12,	#1					// Move #1 into x12
+	mov	x13,	#1000					// Move #1000 into x13
+	scvtf	d18,	x12					// Converting value in x12 into a float and storing it in d18
+	scvtf	d19,	x13					// Converting value in x13 into a float and storing it in d19
+	fdiv	d18,	d18,	d19				// Dividing d18 by d19 and storing result in d18
+	fadd	d16,	d17,	d16				// Adding d17 and d16 ~ Storing result in d16
+	fcmp	d16,	d18					// Comparing d16 and d18
+	b.gt	cs_e1						// If d16 > d18, then branch to cs_e1
 cs_if:
 	// Making score equal to zero
-	mov	x9,	#0
-	scvtf	d16,	x9
-	str	d16,	[x10]
+	mov	x9,	#0					// Move 0 into x9
+	scvtf	d16,	x9					// Converting value in x9 to a float and storing result in d16
+	str	d16,	[x10]					// Storing d16 into x10
 
 	// Decrementig lives by one
-	ldr	x14,	[x29, lives_addr_offset]
-	ldr	w15,	[x14]
-	sub	w15,	w15,	#1
-	str	w15,	[x14]
+	ldr	x14,	[x29, lives_addr_offset]		// Loading x14 with address of lives
+	ldr	w15,	[x14]					// Loading w15 with value of lives
+	sub	w15,	w15,	#1				// Subtracting w15 by one
+	str	w15,	[x14]					// Storing w15 into address in x14
 
-	// Informing player about losing a life
-	ldr	x0,	=output16
-	bl	printf
+	// Informing player about losing a life	
+	ldr	x0,	=output16				// Load x0 with address of output16
+	bl	printf						// Branch and link printf
 	
-	b	cs_e_if
+	b	cs_e_if						// Branch to cs_e_if
 cs_e1:	
 
-	ldr	d16,	[x29, part_score_offset]
-	ldr	x9,	[x29, score_addr_offset]
-	ldr	d17,	[x9]
+	ldr	d16,	[x29, part_score_offset]		// Load d16 with value of partial score
+	ldr	x9,	[x29, score_addr_offset]		// Load x9 with address of score var
+	ldr	d17,	[x9]					// Load d17 with value of score
+
+	fadd	d17,	d17,	d16				// Add d17 and d16 ~ Store result in d17
+	str	d17,	[x9]					// Store d17 into address in x9 (score)
 	
 	// Printing partial score
-	ldr	x0,	=output17
-	fmov	d0,	d16
-
-	fadd	d17,	d17,	d16
-	str	d17,	[x9]
-	
+	ldr	x0,	=output17				// Load x0 with address of output17
+	fmov	d0,	d16					// Moving d16 into d0
+	bl	printf 						// Branch and link printf
+		
 cs_e_if:	
 
-	ldp	x29,	x30,	[sp],	dealloc	
-	ret
+	ldp	x29,	x30,	[sp],	dealloc			// Restore x29, x30 and deallocate "dealloc" amount of bytes
+	ret							// Return to main
 
 	/*--------------------------------------------------------------*/
 
@@ -1102,49 +1134,64 @@ cs_e_if:
 	Return -> Nothing
 	*/
 
-	lives_size = 4
-	score_size= 8
-	bombs_size = 4
+	lives_size = 4						// Size of local variable lives
+	score_size= 8						// Size of local variable score
+	bombs_size = 4						// Size of local variable bombs
 
-	alloc = -(16 + lives_size + score_size + bombs_size) & -16
-	dealloc = -alloc
+	// Number of bytes to allocate for the stack frame (quadword aligned)
+	alloc = -(16 + lives_size + score_size + bombs_size) & -16 
+	dealloc = -alloc					// Number of bytes to deallocate for the stack frame (quadword aligned)
 
-	lives_offset = 16
-	score_offset = 20
-	bombs_offset = 28
+	lives_offset = 16					// Offset to get to variable lives
+	score_offset = 20					// Offset to get to variable score
+	bombs_offset = 28					// Offset to get to varialbe bombs
 
 ExitGame:
-	stp	x29,	x30,	[sp, alloc]!
-	mov	x29,	sp
+	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes	
+	mov	x29,	sp					// Moving sp into x29
 
-	str	x0,	[x29, lives_offset]
-	str	d0,	[x29, score_offset]
-	str	x1,	[x29, bombs_offset]
+	str	x0,	[x29, lives_offset]			// Storing x0 in the stack (lives value)
+	str	d0,	[x29, score_offset]			// Storing d0 in the stack (score value)
+	str	x1,	[x29, bombs_offset]			// Storing x1 in the stack (bombs value)
 
-	ldr	x9,	=exit_tile_f
-	ldrsb	w9,	[x9]
-	ldr	w10,	[x29, lives_offset]
+	ldr	x9,	=exit_tile_f				// Load x9 with address of exit_tile_f
+	ldrsb	w9,	[x9]					// Load x9 with value of exit_tile_f
+	ldr	w10,	[x29, lives_offset]			// Load w10 with value of lives
 
-	
+	cmp	w9,	#1					// Comparing w9 and #1
+	b.ne	exit_else					// If w9 != 1, then branch to exit_else
+	cmp	w10,	#0					// Comparinng w10 and #0
+	b.le	exit_else					// If w10 <= #0, then branch to exit_else
+	ldr	w11,	[x29, bombs_offset]			// Load w11 with value of bombs
+	cmp	w11,	#0					// Comapring w11 with #0
+	b.eq	exit_else					// if w11 <= #0, then branch to exit_else
 exit_if:
-
-exit_else1:
-
-exit_else2:	
-	
-
+	ldr	x0,	=output19				// Load x0 with address of output19
+	b	end_exit_if					// Branch end_exit_if
+exit_else:	
+	ldr	x0,	=output20				// Load x0 with address of output20
 end_exit_if:	
+	bl	printf						// Branch and link printf
 	
-	
-	
-
-
-	
-
-	ldp	x29,	x30,	[sp],	dealloc
-	ret
+	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallcoating "dealloc" amount of bytes
+	ret							// Returning to main
 
 	/*--------------------------------------------------------------*/
+
+InitializeLeadeboard:
+	stp	x29,	x30,	[sp, -16]!
+	mov	x29,	sp
+
+
+
+
+
+
+	ldp	x29,	x30,	[sp],	16
+	ret
+	
+	/*--------------------------------------------------------------*/
+	
 DisplayLeaderboard:
 	stp	x29,	x30,	[sp, -16]!
 	mov	x29,	sp
@@ -1159,9 +1206,10 @@ DisplayLeaderboard:
 	score_size = 8						// Size (in bytes) of score
 	bombs_size = 4						// Size (in bytes) of bombs
 	board_addr_size = 8					// Size (in bytes) of the board's address
-	
-	alloc = -(coord_struct_size + 16 + name_size + lives_size + score_size + bombs_size + board_addr_size) & -16 // Total amount of bytes to allocate for stack frame of main (quadword aligned)
-	dealloc = -alloc						      			 			 		     // Total amount of bytes to deallocate for the stack frame of main (quadword alignned) 	
+
+	// Total amount of bytes to allocate for stack frame of main (quadword aligned)
+	alloc = -(coord_struct_size + 16 + name_size + lives_size + score_size + bombs_size + board_addr_size) & -16 		
+	dealloc = -alloc					// Total amount of bytes to deallocate for the stack frame of main (quadword alignned) 	
 
 	name_offset = 16					// Player Name offset
 	lives_offset = 24					// Lives offset
@@ -1234,8 +1282,8 @@ e_if_c:
 	str	w14,	[x29, lives_offset]			// Initializing lives to 3
 
 	// SCORE
-	mov	x14,	#0
-	scvtf	d16,	x14
+	mov	x14,	#0					// Moving 0 into x14
+	scvtf	d16,	x14					// Converting value in x14 to a float and storing it in d16
 	str	d16,	[x29,	score_offset]			// Initializing	score to 0
 	
 	// BOMBS
@@ -1265,7 +1313,6 @@ e_if_c:
 	ldr	x14,	[x29,	board_addr_offset]
 	mov	x0,	x14					// Adding x29 and board_addr_offset and storing result in x0
 	bl	InitializeGame					// Branch and link InitializeGame
-
 	
 	// Printing uncovered board (for grading)
 	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
@@ -1274,65 +1321,70 @@ e_if_c:
 	ldr	x0,	=output1				// Load x0 with address of output1
 	bl	printf						// Branch and link printf
 
-	// Printing covered board
-	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
-	ldr	x1,	[x29,	lives_offset]
-	ldr	d0,	[x29,	score_offset]
-	ldr	x2,	[x29,	bombs_offset]
-	bl	DisplayGame					// Branch and link DisplayGame
-	
 	// Asking player if he/she wants to see the leaderboard
 	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard	
 main_loop:
 
-	// Asking for x-coordinate of bomb
-	ldr	x0,	=output12
-	bl	printf
+	// Printing covered board
+	ldr	x0,	[x29,	board_addr_offset]		// Loading x0 with board address
+	ldr	x1,	[x29,	lives_offset]			// Loading x1 with lives value
+	ldr	d0,	[x29,	score_offset]			// Loading d0 with score value
+	ldr	x2,	[x29,	bombs_offset]			// Loadin x2 with bombs value
+	bl	DisplayGame					// Branch and link DisplayGame
 
-	mov	offset_r,	bombPos_offset
-	add	offset_r,	offset_r,	xcoord_offset		
-	ldr	x0,	=input0
-	add	x1,	x29,	offset_r			
-	bl	scanf
+	// Asking for x-coordinate of bomb
+	ldr	x0,	=output12				// Loadig x0 with address of output12
+	bl	printf						// Branch and link
+
+	mov	offset_r,	bombPos_offset			// Moving bombPos_offset into offset_r
+	add	offset_r,	offset_r,	xcoord_offset	// Adding offset_r and xcoord_offset
+	ldr	x0,	=input0					// Loading x0 with address of input0
+	add	x1,	x29,	offset_r			// Addinng x29 and offset_r and storing result in x1
+	bl	scanf						// Branch and link scanf
 
 	// Asking for y-coordinate of bomb
-	ldr	x0,	=output13
-	bl	printf
+	ldr	x0,	=output13				// Load x0 with address of output13
+	bl	printf						// Branch and link printf
 
-	mov	offset_r,	bombPos_offset
-	add	offset_r,	offset_r,	ycoord_offset		
-	ldr	x0,	=input0
-	add	x1,	x29,	offset_r			
-	bl	scanf
+	mov	offset_r,	bombPos_offset			// Moving bombPos_offset into offset_r
+	add	offset_r,	offset_r,	ycoord_offset	// Adding offset_r and ycoord_offset 
+	ldr	x0,	=input0					// Loading x0 with address of input0
+	add	x1,	x29,	offset_r			// Adding x29 and offset_r and storing result in x1
+	bl	scanf						// Branch and link scanf
 
 	// Calling calculate score
-	ldr	x0,	[x29,	board_addr_offset]
-	add	x1,	x29,	score_offset
-	add	x2,	x29,	lives_offset
-	add	x3,	x29,	bombs_offset
-	add	x4,	x29,	bombPos_offset
-	bl	CalculateScore
-
-	// Printing covered board
-	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
-	ldr	x1,	[x29,	lives_offset]
-	ldr	d0,	[x29,	score_offset]
-	ldr	x2,	[x29,	bombs_offset]
-	bl	DisplayGame					// Branch and link DisplayGame
+	ldr	x0,	[x29,	board_addr_offset]		// Loading x0 with board's address
+	add	x1,	x29,	score_offset			// x1 -> score's address
+	add	x2,	x29,	lives_offset			// x2 -> live's address
+	add	x3,	x29,	bombs_offset			// x3 -> bombs's address 
+	add	x4,	x29,	bombPos_offset			// x4 -> bombPos' address
+	bl	CalculateScore					// Branch and link calculate score
 		
 main_test:
-	ldrsw	x9,	[x29,	lives_offset]
-	cmp 	x9,	#0
-	b.le	end_main_loop
-	ldr	x9,	=exit_tile_f
-	ldrsb	w10,	[x9]
-	cmp 	w10,	#1
-	b.eq	end_main_loop
-	ldrsw	x9,	[x29,	bombs_offset]
-	cmp	x9,	#0
-	b.lt	end_main_loop
-	b	main_loop
+	ldrsw	x9,	[x29,	lives_offset]			// Loading x9 with lives value
+	cmp 	x9,	#0					// Comparing x9 with 0
+	b.le	end_main_loop					// If x9 <= 0, then branch end_main_loop
+	ldr	x9,	=exit_tile_f				// Load x9 with address of exit_tile_f
+	ldrsb	w10,	[x9]					// Load w10 with value of exit_tile_f
+	cmp 	w10,	#1					// Comparing w10 and #1
+	b.eq	end_main_loop					// If w10 == #1, then branch end_main_loop
+	ldrsw	x9,	[x29,	bombs_offset]			// Load x9 with value of bombs
+	cmp	x9,	#0					// Comparing x9 and #0
+	b.le	end_main_loop					// If x9 <= #0, branch end_main_loop
+	b	main_loop					// Branch to main_loop (if all comparisons above are false)
 end_main_loop:	
+	
+	// Printing covered board (one last time)
+	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
+	ldr	x1,	[x29,	lives_offset]			// Load x1 with value of lives
+	ldr	d0,	[x29,	score_offset]			// Load d0 with value of score
+	ldr	x2,	[x29,	bombs_offset]			// load x2 with value of bombs
+	bl	DisplayGame					// Branch and link DisplayGame
+
+	ldr	x0,	[x29,	lives_offset]			// Load x9 with value of lives
+	ldr	d0,	[x29,	score_offset]			// Load d0 with value of score 
+	ldr	x1,	[x29,	bombs_offset]			// Load x1 with value of bombs
+	bl	ExitGame					// Branch and link ExitGame
 
 	// Asking play if he/she wants to see the leaderboard
 	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
