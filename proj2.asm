@@ -15,8 +15,12 @@ output11:	.string "\nTotal reward entries %d/%d = %.2f%% less than 20%% (includi
 output12:	.string "\nEnter x position or quit (q): "
 output13:	.string "\nEnter y position or quit (q): "
 output14:	.string "\nGame state not stored\nBye...\n"
-output15:	.string "Test Number: %d\n"
-output16:	.string  "Your name is: %s\n"
+output15:	.string "\nBoom!! You found %d double range reward(s) (apply to next bomb only) | stackable\n\n"
+output16:	.string "Oops! You loose a life because score is <= 0\n\n"
+output17:	.string "Total uncovered score of %.2f points\n\n"
+output18:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
+output19:	.string "Test Number: %f\n"
+output20:	.string  "Your name is: %s\n"
 error0:		.string "Not enough arguments provided!\n"
 error1:		.string "Height and Width have to be >=10\n"
 input0:		.string "%d"
@@ -30,6 +34,7 @@ input1:		.string "%s"
 	define( j_r,		x21 )				// Defining x21 as j_r
 	define( offset_r,	x22 )				// Defining x22 as offset_r
 	define(	tmp_r,		x23 )				// Defining x23 as tmp_r
+	define( offset2_r,	x24 )				// Definig x24 as offset2_r
 
 	// Register offsets (for restoring them)
 	reg_size = 8
@@ -38,6 +43,7 @@ input1:		.string "%s"
 	r21_offset = 32
 	r22_offset = 40
 	r23_offset = 48
+	r24_offset = 56
 	
 	// CELL STRUCT {bool discovered, float value}
 	cell_struct_size = 9
@@ -49,7 +55,6 @@ input1:		.string "%s"
 	xcoord_offset = 0
 	ycoord_offset = 4
 	
-
 	// Subroutine is in charge of providing a seed for
 	// function random number.
 sRand:	stp	x29,	x30,	[sp, -16]!			// Allocatinng 16 bytes onn the stack for the subroutine
@@ -652,13 +657,22 @@ init_test4:
 	
 	/*
 	Subroutine displays the 2D game board
-	It accepts the address of the board in x0
+	Arguments -> x0: board's address, w1: lives, d0: score, w3: bombs	 
 	Does not return anything
 	Note: It displays the board as "hidden"	
 	*/
 
-	alloc = -(reg_size + reg_size + reg_size + reg_size + 16) & -16
+	lives_size = 4
+	score_size = 8
+	bombs_size = 4
+	
+	alloc = -(lives_size + score_size + bombs_size + reg_size + reg_size + reg_size + reg_size + 16) & -16
 	dealloc = -alloc
+
+	lives_offset = 48
+	score_offset = 52
+	bombs_offset = 60
+	
 DisplayGame:
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes
 	mov	x29,	sp					// Moving sp into x29
@@ -670,6 +684,11 @@ DisplayGame:
 	str	x22,	[x29,	r22_offset]			// Storing value of x22 in stack
 
 	mov	base_r,	x0					// Move x0 into base_r (base of board)
+
+	str	w1,	[x29, lives_offset]
+	str	d0,	[x29, score_offset]
+	str	w2,	[x29, bombs_offset]
+
 	mov	i_r ,	#0					// Move 0 into i_r
 	mov	j_r,	#0					// Move 0 into j_r
 
@@ -758,7 +777,14 @@ disp_test:
 	ldrsw	x9,	[x9]
 	cmp	i_r,	x9
 	b.lt	disp_loop
-		
+
+	// Printing summary of score, lives, and bombs
+	ldr	x0,	=output18
+	ldr	x1,	[x29, lives_offset]
+	ldr	d0,	[x29, score_offset]
+	ldr	x2,	[x29, bombs_offset]
+	bl	printf
+
 	// Restoring calle-saved registers
 	ldr	x19,	[x29,	r19_offset]			// Load value of x19 from stack
 	ldr	x20,	[x29,	r20_offset]			// Load value of x20 from stack
@@ -780,67 +806,74 @@ disp_test:
 
 	dbl_rng_count_size = 4
 	par_score_addr = 8
+	org_act_y_size = 4
 	
-	alloc = -((4 * reg_size) + 16 + coord_struct_size + dbl_rng_coung_size + par_score_addr) & -16
+	alloc = -((6 * reg_size) + 16 + coord_struct_size + dbl_rng_count_size + par_score_addr + org_act_y_size) & -16
 	dealloc = -alloc
 
-	actual_coord_offset = 56
-	dbl_rng_count_offset = 64
-	par_score_addr_offset = 68
+	actual_coord_offset = 64
+	dbl_rng_count_offset = 72
+	par_score_addr_offset = 76
+	org_act_y_offset = 84
 CalculateScoreHelper:
-	stp	x29,	x30,	[sp, -16]!
+	stp	x29,	x30,	[sp, alloc]!
 	mov	x29,	sp
 
-	// Restoring calle-saved registers
+	// Storing calle-saved registers
 	str	x19,	[x29,	r19_offset]			// Store value of x19 in the stack
 	str	x20,	[x29,	r20_offset]			// Store value of x20 in the stack
 	str	x21,	[x29,	r21_offset]			// Store value of x21 in the stack
 	str	x22,	[x29,	r22_offset]			// Store value of x22 in the stack
 	str	x23,	[x29,	r23_offset]			// Store value of x23 in the stack
+	str	x24,	[x29,	r24_offset]			// Store value of x24 in the stack
 
 	// Storing the board's address in base_r
-	mov	base_r,	x0					
+	mov	base_r,	x0
 
-	// Making dbl_rng_count_offset = db_reward_count
+	// Making dbl_rng_count = db_reward_count
 	ldr	x9,	=db_reward_count
 	ldrsw	x10,	[x9]
 	str	w10,	[x29, dbl_rng_count_offset]
 	str	wzr,	[x9]
-	
-	// Finding actual bomb position (for the explosion)
+
+	// Finding actual bomb position
 	ldrsw	x9,	[x1, xcoord_offset]
 	ldrsw	x10,	[x1, ycoord_offset]
 	ldrsw	x11,	[x29, dbl_rng_count_offset]
-	lsl	x12,	#2,	x11
-	mov	tmp_r,	x12
 
-	sub	x9,	x9,	x12
-	sub	x10,	x10,	x12
-	str	w9,	[x29,	actual_coord_offset + xcoord_offset]
-	str	w10,	[x29,	actual_coord_offset + ycoord_offset]
+	mov	x13,	#1
+	lsl	tmp_r,	x13,	x11
 
+	sub	x9,	x9,	tmp_r
+	sub	x10,	x10,	tmp_r
+
+	str	w9,	[x29, actual_coord_offset + xcoord_offset]
+	str	w10,	[x29, actual_coord_offset + ycoord_offset]
+	str	w10,	[x29, org_act_y_offset]
+	
 	// Storing partial score address
 	str	x2,	[x29,	par_score_addr_offset]
-
+	
 	// Computing partial score and discovering tiles
 	mov	i_r,	#0
 	mov	j_r,	#0
 	b	csh_test
 csh_loop:
-
+	
+	// Resetting the value of actual-y coordinate for the next iteration
+	ldrsw	x9,	[x29, org_act_y_offset]
+	str	w9,	[x29, actual_coord_offset + ycoord_offset]
 	mov	j_r,	#0
 	b	csh_test2
 csh_loop2:
 
 	// Making sure tile is in the board
-
-	ldrsw	x9,	[x29, actual_coord_offset + xcoord_offset]	// Loading x9 with Actual xCoord value 
-	ldrsw	x10,	[x29, actual_coord_offset + y_coord_offset]	// Loadinng x10 with Actual yCoord value
-	ldr	x11,	=height						// Loading x11 with address of height
-	ldrsw	x11,	[x11]						// Loading x11 with value of height
-	ldr	x12,	=width						// Loading x12 with address of width
-	ldrsw	x12,	[x12]						// Loading x12 with value of width
-
+	ldrsw	x9,	[x29,	actual_coord_offset + xcoord_offset]
+	ldrsw	x10,	[x29,	actual_coord_offset + ycoord_offset]
+	ldr	x11,	=height
+	ldrsw	x11,	[x11]
+	ldr	x12,	=width
+	ldrsw	x12,	[x12]
 
 	cmp	x9,	#0
 	b.lt	e_in_board
@@ -850,16 +883,20 @@ csh_loop2:
 	b.lt	e_in_board
 	cmp	x10,	x12
 	b.ge	e_in_board
-in_board:
+in_board:	
 
 	// Calculating the offset
-	ldr	x9,	=width
-	ldrsw	x9,	[x9]
-	mul	offset_r,	i_r,	x9
-	add	offset_r,	offset_r,	j_r
-	mov	x10,	cell_struct_size
-	mul	offset_r,	offset_r,	x10
-	add	offset_r,	offset_r,	value_offset
+	ldr	x9,	=width							// Loading x9 with address of width
+	ldrsw	x9,	[x9]							// Loading x9 with value of width
+	ldrsw	x10,	[x29, actual_coord_offset + xcoord_offset]		// Loading x10 with value of actual x-coordinate
+	ldrsw	x11,	[x29, actual_coord_offset + ycoord_offset]		// Loading x11 with value of actual y-coordinate
+
+	mul	offset_r,	x10,	x9					// Multiplying x10 and x9
+	add	offset_r,	offset_r,	x11				// Adding offset_r and x11
+	mov	x12,	cell_struct_size					// Moving cell_struct_size into x12
+	mul	offset_r,	offset_r,	x12				// Multiplying offset_r with x12
+	add	offset2_r,	offset_r,	discovered_offset		// Adding offset_r and discovered_offset and storing result in offset2_r
+	add	offset_r,	offset_r,	value_offset			// Adding offset_r and value_offset
 
 	ldr	d16,	[base_r, offset_r]
 	mov	x9,	75
@@ -878,49 +915,85 @@ in_board:
 
 	// Else normal tile
 	b nrm
-	
+
 db_rng:
+	ldrsb	w9,	[base_r, offset2_r]
+	cmp	w9,	#1
+	b.eq	end_comparison
 
-	b	e_c
+	ldr	x10,	=db_reward_count
+	ldrsw	x11,	[x10]
+	add	x11,	x11,	#1
+	str	w11,	[x10]
+
+	b	end_comparison
 ext:
-	
-	b	e_c
-nrm:
+	ldr	x10,	=exit_tile_f
+	mov	w11,	#1
+	strb	w11,	[x10]
 
+	b	end_comparison
+nrm:	
+	ldrsb	w9,	[base_r, offset2_r]
+	cmp	w9,	#1
+	b.eq	end_comparison
 
-e_c
+	ldr	x10,	[x29, par_score_addr_offset]
+	ldr	d16,	[x10]
+	ldr	d17,	[base_r, offset_r]
+	fadd	d16,	d16,	d17
+	str	d16,	[x10]
 
-	// If exit tile
+end_comparison:
 
-	// If normal tile and not discovered
+	// Making current cell visible
+	mov	w9,	#1
+	strb	w9,	[base_r, offset2_r]
 
-	// Make cell visible
-		
 e_in_board:	
-	
+
+	// Incrementing actual y-pos by one
+	ldrsw	x9,	[x29, actual_coord_offset + ycoord_offset]
+	add	x9,	x9,	#1
+	str	w9,	[x29, actual_coord_offset + ycoord_offset]
+
 	add	j_r,	j_r,	#1
-csh_test2:
+csh_test2:	
 	lsl	x9,	tmp_r,	#1
-	cmp	i_r,	x9
+	cmp	j_r,	x9
 	b.le	csh_loop2
 
-	
+	// Incrementing actual x-pos by one
+	ldrsw	x10,	[x29, actual_coord_offset + xcoord_offset]
+	add	x10,	x10,	#1
+	str	w10,	[x29, actual_coord_offset + xcoord_offset]
+
 	add	i_r,	i_r,	#1
-csh_test:
-	lsl	x9,	temp_r,	#1
+csh_test:	
+	lsl	x9,	tmp_r,	#1
 	cmp	i_r,	x9
 	b.le	csh_loop
-	
-	
 
+	// Printing message if double-range rewards were found
+	ldr	x9,	=db_reward_count
+	ldrsw	x9,	[x9]
+	cmp	x9,	#0
+	b.le	csh_print_end
+csh_print:
+	ldr	x0,	=output15
+	mov	x1,	x9
+	bl	printf
+csh_print_end:	
+	
 	// Restoring calle-saved registers
 	ldr	x19,	[x29,	r19_offset]			// Load value of x19 from stack
 	ldr	x20,	[x29,	r20_offset]			// Load value of x20 from stack
 	ldr	x21,	[x29,	r21_offset]			// Load value of x21 from stack
 	ldr	x22,	[x29,	r22_offset]			// Load value of x22 from stack
 	ldr	x23,	[x29,	r23_offset]			// Load value of x23 from stack
+	ldr	x24,	[x29,	r24_offset]			// Load value of x24 from stack
 
-	ldp	x29,	x30,	[sp],	16
+	ldp	x29,	x30,	[sp],	dealloc
 	ret
 		
 	/*--------------------------------------------------------------*/
@@ -968,23 +1041,113 @@ CalculateScore:
 	str	d16,	[x29, part_score_offset]
 	
 	// Calling CalculateScoreHelper
-	ldr	x9,	[x29,	board_addr_offset]
-	ldr	x10,	[x29,	bomPos_addr_offset]
-
-	mov	x0,	x9
-	mov	x1,	x10
+	ldr	x0,	[x29,	board_addr_offset]
+	ldr	x1,	[x29,	bomPos_addr_offset]
 	add	x2,	x29,	part_score_offset
 	bl	CalculateScoreHelper
+
+
+	// Printing results of bomb explosion
+	ldr	d16,	[x29, part_score_offset]
+	ldr	x10,	[x29, score_addr_offset]
+	ldr	d17,	[x10]
+	mov	x12,	#1
+	mov	x13,	#1000
+	scvtf	d18,	x12
+	scvtf	d19,	x13
+	fdiv	d18,	d18,	d19
+	fadd	d16,	d17,	d16
+	fcmp	d16,	d18
+	b.gt	cs_e1
+cs_if:
+	// Making score equal to zero
+	mov	x9,	#0
+	scvtf	d16,	x9
+	str	d16,	[x10]
+
+	// Decrementig lives by one
+	ldr	x14,	[x29, lives_addr_offset]
+	ldr	w15,	[x14]
+	sub	w15,	w15,	#1
+	str	w15,	[x14]
+
+	// Informing player about losing a life
+	ldr	x0,	=output16
+	bl	printf
+	
+	b	cs_e_if
+cs_e1:	
+
+	ldr	d16,	[x29, part_score_offset]
+	ldr	x9,	[x29, score_addr_offset]
+	ldr	d17,	[x9]
+	
+	// Printing partial score
+	ldr	x0,	=output17
+	fmov	d0,	d16
+
+	fadd	d17,	d17,	d16
+	str	d17,	[x9]
+	
+cs_e_if:	
 
 	ldp	x29,	x30,	[sp],	dealloc	
 	ret
 
 	/*--------------------------------------------------------------*/
 
+	/*
+	Subroutine prints correct "game over" message and logs results in a file
+	Argumets -> x0: lives, d0: score, x1: bombs
+	Return -> Nothing
+	*/
+
+	lives_size = 4
+	score_size= 8
+	bombs_size = 4
+
+	alloc = -(16 + lives_size + score_size + bombs_size) & -16
+	dealloc = -alloc
+
+	lives_offset = 16
+	score_offset = 20
+	bombs_offset = 28
+
+ExitGame:
+	stp	x29,	x30,	[sp, alloc]!
+	mov	x29,	sp
+
+	str	x0,	[x29, lives_offset]
+	str	d0,	[x29, score_offset]
+	str	x1,	[x29, bombs_offset]
+
+	ldr	x9,	=exit_tile_f
+	ldrsb	w9,	[x9]
+	ldr	w10,	[x29, lives_offset]
+
+	
+exit_if:
+
+exit_else1:
+
+exit_else2:	
+	
+
+end_exit_if:	
+	
+	
+	
+
+
+	
+
+	ldp	x29,	x30,	[sp],	dealloc
+	ret
+
+	/*--------------------------------------------------------------*/
 DisplayLeaderboard:
 	stp	x29,	x30,	[sp, -16]!
 	mov	x29,	sp
-
 
 	ldp	x29, 	x30,	[sp],	16
 	ret
@@ -996,10 +1159,8 @@ DisplayLeaderboard:
 	score_size = 8						// Size (in bytes) of score
 	bombs_size = 4						// Size (in bytes) of bombs
 	board_addr_size = 8					// Size (in bytes) of the board's address
-	xPos_size = 4						// Size (in bytes) of xPos char string
-	yPos_size = 4						// Size (in bytes) of yPos char string
 	
-	alloc = -(coord_struct_size + xPos_size + yPos_size + 16 + name_size + lives_size + score_size + bombs_size + board_addr_size) & -16 // Total amount of bytes to allocate for stack frame of main (quadword aligned)
+	alloc = -(coord_struct_size + 16 + name_size + lives_size + score_size + bombs_size + board_addr_size) & -16 // Total amount of bytes to allocate for stack frame of main (quadword aligned)
 	dealloc = -alloc						      			 			 		     // Total amount of bytes to deallocate for the stack frame of main (quadword alignned) 	
 
 	name_offset = 16					// Player Name offset
@@ -1007,9 +1168,7 @@ DisplayLeaderboard:
 	score_offset = 28					// Score offset
 	bombs_offset = 36					// Bombs offset
 	board_addr_offset = 40					// Board offset
-	xPos_offset = 48					// Offset of xPos char array
-	yPos_offset = 52					// Ofsset of yPos char array
-	bombPos_offset = 56					// Offset of bombPos struct 
+	bombPos_offset = 48					// Offset of bombPos struct 
 	
 	// Main subroutine in charge of running all the code
 main:	stp	x29,	x30,	[sp, alloc]!			// Alocating alloc bytes on the stack
@@ -1117,12 +1276,14 @@ e_if_c:
 
 	// Printing covered board
 	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
+	ldr	x1,	[x29,	lives_offset]
+	ldr	d0,	[x29,	score_offset]
+	ldr	x2,	[x29,	bombs_offset]
 	bl	DisplayGame					// Branch and link DisplayGame
 	
 	// Asking player if he/she wants to see the leaderboard
-	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
-	
-//main_loop:
+	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard	
+main_loop:
 
 	// Asking for x-coordinate of bomb
 	ldr	x0,	=output12
@@ -1149,11 +1310,16 @@ e_if_c:
 	add	x1,	x29,	score_offset
 	add	x2,	x29,	lives_offset
 	add	x3,	x29,	bombs_offset
-	add	x14,	x29,	bombPos_offset
+	add	x4,	x29,	bombPos_offset
 	bl	CalculateScore
-	
 
-/*	
+	// Printing covered board
+	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
+	ldr	x1,	[x29,	lives_offset]
+	ldr	d0,	[x29,	score_offset]
+	ldr	x2,	[x29,	bombs_offset]
+	bl	DisplayGame					// Branch and link DisplayGame
+		
 main_test:
 	ldrsw	x9,	[x29,	lives_offset]
 	cmp 	x9,	#0
@@ -1167,11 +1333,9 @@ main_test:
 	b.lt	end_main_loop
 	b	main_loop
 end_main_loop:	
-*/
 
 	// Asking play if he/she wants to see the leaderboard
 	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
-	
 	
 	// Deallocating memory for the 2D board
 	ldr	x9,	=height					// Load x9 with address of height			
