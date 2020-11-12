@@ -25,8 +25,11 @@ output21:	.string "Test Number: %f\n"
 output22:	.string  "Your name is: %s\n"
 error0:		.string "Not enough arguments provided!\n"
 error1:		.string "Height and Width have to be >=10\n"
+error2:		.string "\nThere is no leaderboard yet. Play the game to be added to it!\n"
 input0:		.string "%d"
 input1:		.string "%s"
+file0:		.string "leaderboard.txt"
+test0:		.string "%s\n"
 	
 	.balign	4                				// Adding 4 bytes of padding (to keep everything consistent)
 	.global main             				// Making main global to the linker (OS)
@@ -56,6 +59,12 @@ input1:		.string "%s"
 	coord_struct_size = 8
 	xcoord_offset = 0
 	ycoord_offset = 4
+
+	// PLAYER STRUCT
+	player_struct_size = 24
+	plyr_name_offset = 0
+	scr_offset = 8
+	time_plyd_offset = 16
 	
 	// Subroutine is in charge of providing a seed for
 	// function random number.
@@ -1178,16 +1187,144 @@ end_exit_if:
 
 	/*--------------------------------------------------------------*/
 
-InitializeLeadeboard:
+SortLeaderBoard:
 	stp	x29,	x30,	[sp, -16]!
 	mov	x29,	sp
 
 
 
-
-
-
 	ldp	x29,	x30,	[sp],	16
+	ret
+
+	/*--------------------------------------------------------------*/
+
+	num_entries_size = 4
+	fd_size = 4
+
+	alloc = -(16 + num_entries_size + fd_size) & -16
+	dealloc = -alloc
+
+	num_entries_offset = 16
+	fd_offset = 20
+
+getLeaderboardSize:	
+	stp	x29,	x30,	[sp, alloc]!
+	mov	x29,	sp
+
+	// Opening the file named leaderboard.txt
+	mov	w0,	-100
+	ldr	x1,	=file0
+	mov	w2,	0
+	mov	w3,	0
+	mov	x8,	56
+	svc	0
+
+	// Checking for error
+	str	w0,	[x29,	fd_offset]
+	cmp	w0,	#0
+	b.ge	open_ok1
+
+	ldr	x0,	=error2
+	bl	printf
+
+	mov	w0,	#1
+	
+	ldp	x29,	x30,	[sp],	dealloc
+	ret
+	
+open_ok1:
+
+	ldr	w0,	[x29,	fd_offset]
+	add	x1,	x29,	num_entries_offset
+	mov	x2,	4
+	mov	x8,	63
+	svc	0
+	
+	// Closing file named leaderboard.txt
+	ldr	w0,	[x29,	fd_offset]
+	mov	x8,	57
+	svc	0
+
+	// Returning size of leaderboard
+
+	
+	
+	ldp	x29,	x30,	[sp],	dealloc
+	ret
+
+	/*--------------------------------------------------------------*/
+	
+	/*
+	Subroutine in charge of opening leaderboard.txt and initializing
+	the leaderboard array.
+	Arguments -> x0: Address of leader board array
+	*/
+
+	fd_size = 4
+	
+	alloc = -( (4 * reg_size) + 16 + fd_size) & -16
+	dealloc = -alloc
+
+	fd_offset = 48
+	
+InitializeLeaderboard:
+	stp	x29,	x30,	[sp, alloc]!
+	mov	x29,	sp
+
+	// Storing callee-saved registers
+	str	x19,	[x29,	r19_offset]
+	str	x20,	[x29,	r20_offset]
+	str	x21,	[x29,	r21_offset]
+	str	x22,	[x29,	r22_offset]
+	
+	mov	base_r,	x0
+
+	// Opening the file named leaderboard.txt
+	mov	w0,	-100
+	ldr	x1,	=file0
+	mov	w2,	0
+	mov	w3,	0
+	mov	x8,	56
+	svc	0
+
+	// Checking for error
+	str	w0,	[x29,	fd_offset]
+	cmp	w0,	#0
+	b.ge	open_ok2
+
+	ldr	x0,	=error2
+	bl	printf
+
+	ldp	x29,	x30,	[sp],	dealloc
+	ret
+	
+open_ok2:
+
+	ldr	x0,	=error0
+	bl	printf
+
+
+	
+	
+	
+
+	
+
+	// Sorting the leaderboard array
+
+	
+	// Closing file amed leaderboard.txt
+	ldr	w0,	[x29,	fd_offset]
+	mov	x8,	57
+	svc	0
+	
+	// Restoring callee-saved registesrs
+	ldr	x19,	[x29,	r19_offset]
+	ldr	x20,	[x29,	r20_offset]
+	ldr	x21,	[x29,	r21_offset]
+	ldr	x22,	[x29,	r22_offset]
+	
+	ldp	x29,	x30,	[sp],	dealloc
 	ret
 	
 	/*--------------------------------------------------------------*/
@@ -1216,7 +1353,7 @@ DisplayLeaderboard:
 	score_offset = 28					// Score offset
 	bombs_offset = 36					// Bombs offset
 	board_addr_offset = 40					// Board offset
-	bombPos_offset = 48					// Offset of bombPos struct 
+	bombPos_offset = 48					// Offset of bombPos struct
 	
 	// Main subroutine in charge of running all the code
 main:	stp	x29,	x30,	[sp, alloc]!			// Alocating alloc bytes on the stack
@@ -1307,13 +1444,19 @@ e_if_c:
 
 	// Storing base address of board	
 	mov	x14,	sp					// Moving sp into x14
-	str	x14,	[x29,	board_addr_offset]		// Storinng x14 in the stack at x29 + board_addr_offset
+	str	x14,	[x29,	board_addr_offset]		// Storing x14 in the stack at x29 + board_addr_offset
 
 	// Initializing game board
 	ldr	x14,	[x29,	board_addr_offset]
 	mov	x0,	x14					// Adding x29 and board_addr_offset and storing result in x0
 	bl	InitializeGame					// Branch and link InitializeGame
-	
+
+	// Getting size of leaderboard and allocating memory
+	bl	getLeaderboardSize
+
+	// Initializing leaderboard
+	bl	InitializeLeaderboard
+
 	// Printing uncovered board (for grading)
 	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
 	bl	UncoveredBoard					// Branch and link UnocoveredBoard
