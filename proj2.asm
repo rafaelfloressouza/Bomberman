@@ -12,12 +12,12 @@ output8:	.string "- "
 output9:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
 output10:	.string "\nTotal negative entries %d/%d = %.2f%% less than 40%%"
 output11:	.string "\nTotal reward entries %d/%d = %.2f%% less than 20%% (including exit tile)\n\n"
-output12:	.string "\nEnter x position or quit (q): "
-output13:	.string "\nEnter y position or quit (q): "
+output12:	.string "\nEnter x position or quit (-1): "
+output13:	.string "\nEnter y position or quit (-1): "
 output14:	.string "\nGame state not stored\nBye...\n"
 output15:	.string "\nBoom!! You found %d double range reward(s) ~ <= 9  will apply\n"
 output16:	.string "Oops! You loose a life because score is <= 0\n\n"
-output17:	.string "Total uncovered score of %.2f points\n\n"
+output17:	.string "\nTotal uncovered score of %.2f points\n\n"
 output18:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
 output19:	.string "\n\nCongratulations, you won!!\n\n"
 output20:	.string "\n\nGame Over, You lose !!\n\n"
@@ -29,6 +29,9 @@ error1:		.string "Height and Width have to be >=10\n"
 error2:		.string "\nThere is no leaderboard yet. Play the game to be added to it!\n"
 error3:		.string "\nFile leaderboard.txt could not be updated\n"
 error4:		.string "Game Summary could not be recorded!\n"
+error5:		.string "\nx position must be between >= 0 and < %d\n"
+error6:		.string "\ny position must be between >=0 and < %d\n"
+error7:		.string "\nName of player should be <= 15\n"
 	
 	// Input strings
 input0:		.string "%d"
@@ -70,29 +73,29 @@ game_summary4:	.string "*******************************\n"
 	define( offset2_r,	x24 )				// Definig x24 as offset2_r
 
 	// Register offsets (for restoring them)
-	reg_size = 8
-	r19_offset = 16
-	r20_offset = 24
-	r21_offset = 32
-	r22_offset = 40
-	r23_offset = 48
-	r24_offset = 56
+	reg_size = 8						// Size of an X register
+	r19_offset = 16						// Offset to get x19
+	r20_offset = 24						// Offset to get x20
+	r21_offset = 32						// Offset to get x21
+	r22_offset = 40						// Offset to get x22
+	r23_offset = 48						// Offset to get x23	
+	r24_offset = 56						// Offset to get x24
 	
 	// CELL STRUCT {bool discovered, float value}
-	cell_struct_size = 9
-	discovered_offset = 0
-	value_offset = 1
+	cell_struct_size = 9					// Size of CELL struct	
+	discovered_offset = 0					// Offset to get discovered		
+	value_offset = 1					// Offset to get value
 
 	// COORDINATE STRUCT {int xCoord, int yCoord}
-	coord_struct_size = 8
-	xcoord_offset = 0
-	ycoord_offset = 4
+	coord_struct_size = 8					// Size of COORDINATE struct
+	xcoord_offset = 0					// Offset to get x
+	ycoord_offset = 4					// Offset to get y
 
-	// PLAYER STRUCT
-	player_struct_size = 20
-	plyr_name_offset = 0
-	scr_offset = 8
-	time_plyd_offset = 16
+	// PLAYER STRUCT {char * name, float score, int time}
+	player_struct_size = 20					// Size of PLAYER struct
+	plyr_name_offset = 0					// Offset to get plyr_name	
+	scr_offset = 8						// Offset to get scr
+	time_plyd_offset = 16					// Offset to get time_plyd
 	
 	// Subroutine is in charge of providing a seed for
 	// function random number.
@@ -849,30 +852,29 @@ CalculateScoreHelper:
 	ldrsw	x10,	[x1, ycoord_offset]			// Loading x10 with value of bombPos.ycoord
 	ldrsw	x11,	[x29, dbl_rng_count_offset]		// Loading x11 with value of dbl_rng_count
 
-/*
-	ldr	x15,	=reward_active
-	ldrsb	w14,	[x15]
-	cmp	w14,	#0
-	b.eq	calc_e_if1
+	ldr	x15,	=reward_active				// Load x15 with address of reward_active
+	ldrsb	w14,	[x15]					// Load w14 with value of reward_active
+	cmp	w14,	#0					// Comparing w14 and 0
+	b.eq	calc_e_if1					// If w14 == 0, then branch to calc_e_if1
 calc_if1:
-	strb	wzr,	[x15]
-	mov	x11,	#0														<<<<<<<<<<<<<<<
+	strb	wzr,	[x15]					// Store wzr into address in x15
+	mov	x11,	#0					// Move 0 into x11									
 calc_e_if1:
-*/
-	cmp	x11,	#9
-	b.le	calc_e_if2
+
+	cmp	x11,	#9					// Compare x11 and 9
+	b.le	calc_e_if2					// If x11 <= 9, then branch to calc_e_if2
 calc_if2:
-	mov	x11,	#9
+	mov	x11,	#9					// Move #9 into x11
 calc_e_if2:	
-/*
-	cmp	x11,	#0
-	b.le	calc_e_if3
+	
+	cmp	x11,	#0					// Compare x11 with #0
+	b.le	calc_e_if3					// If x11 <= #0, then branch to calc_e_if3
 calc_if3:
-	ldr	x15,	=reward_active
-	mov	w14,	#1
-	strb	w14,	[x15]
+	ldr	x15,	=reward_active				// Load x15 with address of reward_active
+	mov	w14,	#1					// Move #1 into w14
+	strb	w14,	[x15]					// Store w14 into address in x15
 calc_e_if3:
-*/
+
 	mov	x13,	#1					// Moving #1 into x13
 	lsl	tmp_r,	x13,	x11				// Left shift x13 by x11
 
@@ -1039,15 +1041,15 @@ csh_test:
 	b.le	csh_print_end					// If w9 <= 0, then branch csh_print_end
 csh_print:
 
-	ldr	x15,	=reward_active
-	ldrsb	w14,	[x15]
-	cmp	w14,	#0
-	b.eq	other_csh
+	ldr	x15,	=reward_active				// Load x15 with address of reward_active
+	ldrsb	w14,	[x15]					// Load w14 with value of reward_active
+	cmp	w14,	#0					// Comparing w14 with 0
+	b.eq	other_csh					// If w14 == 0, then branch too other_csh
 		
 	ldr	x0,	=output21				// Load x0 whith address of string output15
 	bl	printf						// Branch and link printf
 
-	b	csh_print_end
+	b	csh_print_end					// Branch to csh_print_end
 other_csh:	
 
 	ldr	x0,	=output15				// Load x0 whith address of string output15
@@ -1387,6 +1389,7 @@ sort_l_test2:
 sort_l_test:		
 	ldr	x9,	=no_players				// Loading x9 with address of no_players
 	ldrsw	x9,	[x9]					// Loading x9 with value of no_players
+	sub	x9,	x9,	#1
 	cmp	i_r,	x9					// Comparing i_r and x9
 	b.lt	sort_l_loop					// If i_r < x9, then branch sort_l_loop
 	
@@ -1666,16 +1669,17 @@ disp_l_test:
 	Return:	None
 	*/
 
-	FILE_ptr_size = 8					
-		
-	alloc = -(16 + reg_size + reg_size + reg_size + reg_size + FILE_ptr_size) & -16
-	dealloc = -alloc
+	FILE_ptr_size = 8					// Size of FILE *					
 
-	FILE_ptr_offset = 48
+	// Number of bytes to allocate for the stack frame of the subroutine (quadword aligned)
+	alloc = -(16 + reg_size + reg_size + reg_size + reg_size + FILE_ptr_size) & -16
+	dealloc = -alloc					// Number of bytes to deallocate
+
+	FILE_ptr_offset = 48					// Offset to get FIlE *
 	
 UpdateLeaderboard:
-	stp	x29,	x30,	[sp, alloc]!
-	mov	x29,	sp
+	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" number of bytes and storing x29, x30
+	mov	x29,	sp					// Move sp into x29
 
 	// Storing callee-saved registers
 	str	x19,	[x29,	r19_offset]			// Load x19 from stack
@@ -1683,79 +1687,79 @@ UpdateLeaderboard:
 	str	x21,	[x29,	r21_offset]			// Load x21 from stack
 	str	x22,	[x29,	r22_offset]			// Load x22 from stack
 	
-	mov	base_r,	x0
+	mov	base_r,	x0					// Move x0 into base_r
 
 	// Updating the leaderboard with data from the current player
-	ldr	x9,	=no_players
-	ldrsw	x9,	[x9]
-	mov	x10,	player_struct_size
-	mul	x9,	x9,	x10
-	str	x1,	[base_r, x9]
-	add	x9,	x9,	scr_offset
-	str	d0,	[base_r, x9]
-	sub	x9,	x9,	scr_offset
-	add	x9,	x9,	time_plyd_offset
-	str	w2,	[base_r, x9]
+	ldr	x9,	=no_players				// Load x9 with address of no_players
+	ldrsw	x9,	[x9]					// Load x9 with value of no_players
+	mov	x10,	player_struct_size			// Move player_struct_size into x10
+	mul	x9,	x9,	x10				// Multiply x9 and x10 ~ Store result in x9
+	str	x1,	[base_r, x9]				// Store x1 into base_r + x9 ~ leaderboard[size-1].name
+	add	x9,	x9,	scr_offset			// Add x9 by scr_offset
+	str	d0,	[base_r, x9]				// Store d0 into base_r + x9 ~ leaderboard[size-1].score
+	sub	x9,	x9,	scr_offset			// Subtract x9 by scr_offset
+	add	x9,	x9,	time_plyd_offset		// Add x9 by time_plyd_offset
+	str	w2,	[base_r, x9]				// Store w2 into base_r + x9 ~ leaderboard[size-1].time_plyd
 
-	// Icrementinng no_players by one
-	ldr	x9,	=no_players
-	ldr	w10,	[x9]
-	add	w10,	w10,	#1
-	str	w10,	[x9]
+	// Incrementinng no_players by one
+	ldr	x9,	=no_players				// Load x9 with address of no_players
+	ldr	w10,	[x9]					// Load w10 with value of no_players
+	add	w10,	w10,	#1				// Add w10 by one
+	str	w10,	[x9]					// Store w10 in x9
 	
 	// Sorting the leaderboard
-	//mov	x0,	base_r
-	//bl	SortLeaderboard
+	mov	x0,	base_r					// Move base_r into x0
+	bl	SortLeaderboard					// Branch and link SortLeaderboard 
 
 	// Storing updated leaderboard into the text file
-	ldr	x0,	=file0
-	ldr	x1,	=file_op1
-	bl	fopen
-	str	x0,	[x29, FILE_ptr_offset]
-	cmp	x0,	#0
-	b.ne	update_file_ok
-	ldr	x0,	=error3
-	bl	printf
-	mov	w0,	-1
-	b	end_update_l	
+	ldr	x0,	=file0					// Load x0 with address of file0
+	ldr	x1,	=file_op1				// Load x1 with address of file_op1
+	bl	fopen						// Branch and link fopen
+	str	x0,	[x29, FILE_ptr_offset]			// Store x0 into FILE_ptr
+	cmp	x0,	#0					// Compare x0 and #0
+	b.ne	update_file_ok					// If x0 != 0, then branch to update_file_ok 
+	ldr	x0,	=error3					// Load x0 with address of error3
+	bl	printf						// Branch and link printf
+	mov	w0,	-1					// Move -1 into w0
+	b	end_update_l					// Branch to end_update_l
 update_file_ok:	
 
-	ldr	x0,	[x29, FILE_ptr_offset]
-	ldr	x1,	=write0
-	ldr	x9,	=no_players
-	ldr	w2,	[x9]
-	bl	fprintf
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	ldr	x1,	=write0					// Load x1 with address of write0
+	ldr	x9,	=no_players				// Load x9 with address of no_players
+	ldr	w2,	[x9]					// Load w2 with value of no_players
+	bl	fprintf						// Branch and link fprintf
 
 	// Writting all data of players to file
-	mov	i_r,	#0
-	b	update_f_test
+	mov	i_r,	#0					// Move 0 into i_r
+	b	update_f_test					// Branch to update_f_tes
 update_f_loop:
 
 	// Calculate the offset
-	mov	x9,	player_struct_size
-	mul	offset_r,	i_r,	x9
+	mov	x9,	player_struct_size			// Move player_struct_size into x9
+	mul	offset_r,	i_r,	x9			// Multiply i_r and x9 ~ Store result in offset_r
 
 	// Writting data
-	ldr	x0,	[x29, FILE_ptr_offset]
-	ldr	x1,	=write1
-	ldr	x2,	[base_r, offset_r]
-	add	offset_r,	offset_r,	scr_offset
-	ldr	d0,	[base_r, offset_r]
-	sub	offset_r,	offset_r,	scr_offset
-	add	offset_r,	offset_r,	time_plyd_offset
-	ldr	w3,	[base_r, offset_r]
-	bl	fprintf
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	ldr	x1,	=write1					// Load x1 with address of write1	
+	ldr	x2,	[base_r, offset_r]			// Load x2 with leaderboard[i].name
+	add	offset_r,	offset_r,	scr_offset	// Add offset_r by scr_offset
+	ldr	d0,	[base_r, offset_r]			// Load d0 with leaderboard[i].score
+	sub	offset_r,	offset_r,	scr_offset	// Subractinng offset_r by scr_offset
+	add	offset_r,	offset_r,	time_plyd_offset// Adding offset_r by time_plyd_offset
+	ldr	w3,	[base_r, offset_r]			// Loading w3 with leaderboard[i].timeplayed
+	bl	fprintf						// Branch and link fprintf
 
-	add	i_r,	i_r,	#1
+	add	i_r,	i_r,	#1				// Increment i_r by one
 update_f_test:
-	ldr	x9,	=no_players
-	ldrsw	x9,	[x9]
-	cmp	i_r,	x9
-	b.lt	update_f_loop
+	ldr	x9,	=no_players				// Load x9 with address of no_players
+	ldrsw	x9,	[x9]					// Load x9 with value of no_players
+	cmp	i_r,	x9					// Comparing i_r with x9
+	b.lt	update_f_loop					// If i_r < x9, then branch to update_f_loop
 
 	// Closing file
-	ldr	x0,	[x29, FILE_ptr_offset]
-	bl	fclose
+	ldr	x0,	[x29, FILE_ptr_offset]			// Loading x0 with FILE_ptr
+	bl	fclose						// Branch and link fclose
 	
 end_update_l:
 
@@ -1765,8 +1769,8 @@ end_update_l:
 	ldr	x21,	[x29,	r21_offset]			// Load x21 from stack
 	ldr	x22,	[x29,	r22_offset]			// Load x22 from stack
 
-	ldp	x29,	x30,	[sp],	dealloc
-	ret
+	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating memory
+	ret							// Return to calling code
 
 	/*--------------------------------------------------------------*/
 
@@ -1777,65 +1781,66 @@ end_update_l:
 	Return:	None
 	*/
 	
-	FILE_ptr_size = 8
-	name_size = 8
-	score_size = 8
-	time_plyd_size = 4
-	
-	alloc = -(16 + FILE_ptr_size + name_size + score_size + time_plyd_size) & -16
-	dealloc = -alloc
+	FILE_ptr_size = 8					// Size of FILE* local var
+	name_size = 8						// Size of name	local var
+	score_size = 8						// Size of score local var
+	time_plyd_size = 4					// Size of time_plyd local var
 
-	FILE_ptr_offset = 16
-	name_offset = 24
-	score_offset = 32
-	time_plyd_offset = 40
+	// Number of bytes to allocate for stack frame of subroutine (quadwoard aligned)
+	alloc = -(16 + FILE_ptr_size + name_size + score_size + time_plyd_size) & -16
+	dealloc = -alloc					// Number of bytes to deallcate
+
+	FILE_ptr_offset = 16					// Offset to get FILE *
+	name_offset = 24					// Offset to get to name var
+	score_offset = 32					// Offset to get to score var
+	time_plyd_offset = 40					// Offset to get to time var
 	
 LogGameSummary:
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" number of bytes and storing x29, x30
 	mov	x29,	sp					// Move sp into x29
 
 	// Storing arguments
-	str	x0,	[x29, name_offset]
-	str	d0,	[x29, score_offset]
-	str	w1,	[x29, time_plyd_offset]
+	str	x0,	[x29, name_offset]			// Store x0 in name
+	str	d0,	[x29, score_offset]			// Store d0 in score 
+	str	w1,	[x29, time_plyd_offset]			// Store w1 in time_plyd
 	
-	ldr	x0,	=file1
-	ldr	x1,	=file_op1
-	bl	fopen
-	str	x0,	[x29, FILE_ptr_offset]
-	cmp	x0,	#0
-	b.ne	log_game_ok
-	ldr	x0,	=error4
-	bl	printf
-	mov	w0,	#-1
-	b	log_game_end
+	ldr	x0,	=file1					// Load x0 with address of file1 string
+	ldr	x1,	=file_op1				// Load x1 with address of file_op1
+	bl	fopen						// Branch and link fopen
+	str	x0,	[x29, FILE_ptr_offset]			// Storing x0 in FILE_ptr
+	cmp	x0,	#0					// Comparing x0 and #0
+	b.ne	log_game_ok					// If x0 != 0, then branch to log_game_ok
+	ldr	x0,	=error4					// Load x0 with address of error4 string
+	bl	printf						// Branch and link printf
+	mov	w0,	#-1					// Move -1 into w0 (to signify an error)
+	b	log_game_end					// Branch to log_game_end
 log_game_ok:	
 
-	ldr	x0,	[x29, FILE_ptr_offset]
-	ldr	x1,	=game_summary0
-	bl	fprintf
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	ldr	x1,	=game_summary0				// Load x1 with address of game_summary0 string
+	bl	fprintf						// Branch and link fprintf
 
-	ldr	x0,	[x29, FILE_ptr_offset]
-	ldr	x1,	=game_summary1
-	ldr	x2,	[x29, name_offset]
-	bl	fprintf
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	ldr	x1,	=game_summary1				// Load x1 with address of game_summary1 string
+	ldr	x2,	[x29, name_offset]			// Load x2 with name
+	bl	fprintf						// Branch and link fprintf
 
-	ldr	x0,	[x29, FILE_ptr_offset]
-	ldr	x1,	=game_summary2
-	ldr	d0,	[x29, score_offset]
-	bl	fprintf
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	ldr	x1,	=game_summary2				// Load x1 with address of game_summary2 string
+	ldr	d0,	[x29, score_offset]			// Load d0 with score
+	bl	fprintf						// Branch and link fprintf 
 
-	ldr	x0,	[x29, FILE_ptr_offset]
-	ldr	x1,	=game_summary3
-	ldr	w2,	[x29, time_plyd_offset]
-	bl	fprintf
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	ldr	x1,	=game_summary3				// Load x1 with address of game_summary3 string
+	ldr	w2,	[x29, time_plyd_offset]			// Load w2 with time_plyd		
+	bl	fprintf						// Branch and link fprintf
 
-	ldr	x0,	[x29, FILE_ptr_offset]
-	ldr	x1,	=game_summary4
-	bl	fprintf
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	ldr	x1,	=game_summary4				// Load x1 with address of game_summary4 string
+	bl	fprintf						// Branch and link fprintf
 
-	ldr	x0,	[x29, FILE_ptr_offset]
-	bl	fclose 
+	ldr	x0,	[x29, FILE_ptr_offset]			// Load x0 with FILE_ptr
+	bl	fclose 						// Branch and link fclose 
 
 log_game_end:	
 	
