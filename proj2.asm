@@ -15,12 +15,13 @@ output11:	.string "\nTotal reward entries %d/%d = %.2f%% less than 20%% (includi
 output12:	.string "\nEnter x position or quit (q): "
 output13:	.string "\nEnter y position or quit (q): "
 output14:	.string "\nGame state not stored\nBye...\n"
-output15:	.string "\nBoom!! You found %d double range reward(s) (apply to next bomb only) | stackable\n\n"
+output15:	.string "\nBoom!! You found %d double range reward(s) ~ <= 9  will apply\n"
 output16:	.string "Oops! You loose a life because score is <= 0\n\n"
 output17:	.string "Total uncovered score of %.2f points\n\n"
 output18:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
 output19:	.string "\n\nCongratulations, you won!!\n\n"
 output20:	.string "\n\nGame Over, You lose !!\n\n"
+output21:	.string "\nYou found double range reward(s). However they dont apply because\nyou found double range rewards on your last move\n"
 	
 	// Error Strings
 error0:		.string "Not enough arguments provided!\n"
@@ -662,8 +663,8 @@ init_test4:
 	
 	/*
 	Subroutine displays the 2D game board
-	Arguments -> x0: board's address, w1: lives, d0: score, w3: bombs	 
-	Does not return anything
+	Arguments -> x0: board's address, w1: lives, d0: score, w2: bombs	 
+	Return:	None
 	Note: It displays the board as "hidden"	
 	*/
 
@@ -848,8 +849,32 @@ CalculateScoreHelper:
 	ldrsw	x10,	[x1, ycoord_offset]			// Loading x10 with value of bombPos.ycoord
 	ldrsw	x11,	[x29, dbl_rng_count_offset]		// Loading x11 with value of dbl_rng_count
 
+/*
+	ldr	x15,	=reward_active
+	ldrsb	w14,	[x15]
+	cmp	w14,	#0
+	b.eq	calc_e_if1
+calc_if1:
+	strb	wzr,	[x15]
+	mov	x11,	#0														<<<<<<<<<<<<<<<
+calc_e_if1:
+*/
+	cmp	x11,	#9
+	b.le	calc_e_if2
+calc_if2:
+	mov	x11,	#9
+calc_e_if2:	
+/*
+	cmp	x11,	#0
+	b.le	calc_e_if3
+calc_if3:
+	ldr	x15,	=reward_active
+	mov	w14,	#1
+	strb	w14,	[x15]
+calc_e_if3:
+*/
 	mov	x13,	#1					// Moving #1 into x13
-	lsl	tmp_r,	x13,	x11				// Left shit x13 by x11
+	lsl	tmp_r,	x13,	x11				// Left shift x13 by x11
 
 	sub	x9,	x9,	tmp_r				// Subtract x9 and tmp_r and store  result in x9
 	sub	x10,	x10,	tmp_r				// Structract x10 and tmp_r and store result in x10
@@ -1008,14 +1033,27 @@ csh_test:
 	b.le	csh_loop					// If i_r <= x9, then brach csh_loop
 
 	// Printing message if double-range rewards were found
-	ldr	x9,	=db_reward_count			// Load x9 with address of db_reward_count
-	ldrsw	x9,	[x9]					// Load x9 with value of db_reward_count
-	cmp	x9,	#0					// Comparing x9 and #0
-	b.le	csh_print_end					// If x9 <= 0, then branch csh_print_end
+	ldr	x9,	=db_reward_count				// Load x9 with value of dbl_rng_count 
+	ldrsw	x9,	[x9]
+	cmp	x9,	#0					// Comparing w9 and #0
+	b.le	csh_print_end					// If w9 <= 0, then branch csh_print_end
 csh_print:
-	ldr	x0,	=output15				// Load x0 whith address of string output15
-	mov	x1,	x9					// Moving x9 into x1
+
+	ldr	x15,	=reward_active
+	ldrsb	w14,	[x15]
+	cmp	w14,	#0
+	b.eq	other_csh
+		
+	ldr	x0,	=output21				// Load x0 whith address of string output15
 	bl	printf						// Branch and link printf
+
+	b	csh_print_end
+other_csh:	
+
+	ldr	x0,	=output15				// Load x0 whith address of string output15
+	mov	x1,	x9					// Moving w9 into w1
+	bl	printf						// Branch and link printf
+	
 csh_print_end:	
 	
 	// Restoring calle-saved registers
@@ -1131,29 +1169,35 @@ cs_e_if:
 
 	/*
 	Subroutine prints correct "game over" message and logs results in a file
-	Argumets -> x0: lives, d0: score, x1: bombs
+	Arguments -> x0: lives, d0: score, w1: bombs, x2: name, w3: time played
 	Return -> Nothing
 	*/
 
 	lives_size = 4						// Size of local variable lives
-	score_size= 8						// Size of local variable score
+	score_size = 8						// Size of local variable score
 	bombs_size = 4						// Size of local variable bombs
+	name_size = 8						// Size of local variable name
+	time_size = 4						// Size of local variable time
 
 	// Number of bytes to allocate for the stack frame (quadword aligned)
-	alloc = -(16 + lives_size + score_size + bombs_size) & -16 
+	alloc = -(16 + lives_size + score_size + bombs_size + name_size + time_size) & -16 
 	dealloc = -alloc					// Number of bytes to deallocate for the stack frame (quadword aligned)
 
 	lives_offset = 16					// Offset to get to variable lives
 	score_offset = 20					// Offset to get to variable score
 	bombs_offset = 28					// Offset to get to varialbe bombs
-
+	name_offset = 32					// Offset to get to variable name
+	time_offset = 40					// Offset to get to variable time
+	
 ExitGame:
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" amount of bytes	
 	mov	x29,	sp					// Moving sp into x29
 
 	str	x0,	[x29, lives_offset]			// Storing x0 in the stack (lives value)
 	str	d0,	[x29, score_offset]			// Storing d0 in the stack (score value)
-	str	x1,	[x29, bombs_offset]			// Storing x1 in the stack (bombs value)
+	str	w1,	[x29, bombs_offset]			// Storing x1 in the stack (bombs value)
+	str	x2,	[x29, name_offset]
+	str	w3,	[x29, time_offset]
 
 	ldr	x9,	=exit_tile_f				// Load x9 with address of exit_tile_f
 	ldrsb	w9,	[x9]					// Load x9 with value of exit_tile_f
@@ -1173,6 +1217,12 @@ exit_else:
 	ldr	x0,	=output20				// Load x0 with address of output20
 end_exit_if:	
 	bl	printf						// Branch and link printf
+
+	// Logging game summary into a file
+	ldr	x0,	[x29, name_offset]			// Load x0 with address of name
+	ldr	d0,	[x29, score_offset]			// Load d0 with value of score
+	ldr	w1,	[x29, time_offset]			// Load w1 with value of time played
+	bl 	LogGameSummary					// Branch and link LogGameSummary
 	
 	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallcoating "dealloc" amount of bytes
 	ret							// Returning to main
@@ -1345,8 +1395,8 @@ sort_l_test:
 	ldr	x20,	[x29,	r20_offset]			// Load x20 from stack
 	ldr	x21,	[x29,	r21_offset]			// Load x21 from stack	
 	ldr	x22,	[x29,	r22_offset]			// Load x22 from stack
-	ldr	x22,	[x29,	r23_offset]			// Load x23 from stack
-	ldr	x22,	[x29,	r24_offset]			// Load x24 from stack
+	ldr	x23,	[x29,	r23_offset]			// Load x23 from stack
+	ldr	x24,	[x29,	r24_offset]			// Load x24 from stack
 	
 	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating memory
 	ret							// Returning to calling code
@@ -1617,13 +1667,11 @@ disp_l_test:
 	*/
 
 	FILE_ptr_size = 8					
-	buffer_addr_size = 32	
-	
-	alloc = -(16 + reg_size + reg_size + reg_size + reg_size + FILE_ptr_size + buffer_addr_size) & -16
+		
+	alloc = -(16 + reg_size + reg_size + reg_size + reg_size + FILE_ptr_size) & -16
 	dealloc = -alloc
 
 	FILE_ptr_offset = 48
-	buffer_addr_offset = 56
 	
 UpdateLeaderboard:
 	stp	x29,	x30,	[sp, alloc]!
@@ -1656,10 +1704,10 @@ UpdateLeaderboard:
 	str	w10,	[x9]
 	
 	// Sorting the leaderboard
-	mov	x0,	base_r
-	bl	SortLeaderboard
+	//mov	x0,	base_r
+	//bl	SortLeaderboard
 
-	// Storing updated board into the text file
+	// Storing updated leaderboard into the text file
 	ldr	x0,	=file0
 	ldr	x1,	=file_op1
 	bl	fopen
@@ -1711,14 +1759,13 @@ update_f_test:
 	
 end_update_l:
 
-	
 	// Restoring callee-saved registers
 	ldr	x19,	[x29,	r19_offset]			// Load x19 from stack
 	ldr	x20,	[x29,	r20_offset]			// Load x20 from stack
 	ldr	x21,	[x29,	r21_offset]			// Load x21 from stack
 	ldr	x22,	[x29,	r22_offset]			// Load x22 from stack
 
-	ldp	x29,	x30,	[sp], dealloc
+	ldp	x29,	x30,	[sp],	dealloc
 	ret
 
 	/*--------------------------------------------------------------*/
@@ -1736,7 +1783,7 @@ end_update_l:
 	time_plyd_size = 4
 	
 	alloc = -(16 + FILE_ptr_size + name_size + score_size + time_plyd_size) & -16
-	dealloc = - alloc
+	dealloc = -alloc
 
 	FILE_ptr_offset = 16
 	name_offset = 24
@@ -1750,38 +1797,47 @@ LogGameSummary:
 	// Storing arguments
 	str	x0,	[x29, name_offset]
 	str	d0,	[x29, score_offset]
-	str	w2,	[x29, time_plyd_offset]
+	str	w1,	[x29, time_plyd_offset]
 	
 	ldr	x0,	=file1
 	ldr	x1,	=file_op1
 	bl	fopen
 	str	x0,	[x29, FILE_ptr_offset]
 	cmp	x0,	#0
-	b.ne	log_ok
+	b.ne	log_game_ok
 	ldr	x0,	=error4
 	bl	printf
 	mov	w0,	#-1
-	b	log_end
-log_ok:	
+	b	log_game_end
+log_game_ok:	
 
-	ldr	x0,	=game_summary0
+	ldr	x0,	[x29, FILE_ptr_offset]
+	ldr	x1,	=game_summary0
 	bl	fprintf
-	ldr	x0,	=game_summary1
-	ldr	x1,	[x29, name_offset]
+
+	ldr	x0,	[x29, FILE_ptr_offset]
+	ldr	x1,	=game_summary1
+	ldr	x2,	[x29, name_offset]
 	bl	fprintf
-	ldr	x0,	=game_summary2
+
+	ldr	x0,	[x29, FILE_ptr_offset]
+	ldr	x1,	=game_summary2
 	ldr	d0,	[x29, score_offset]
 	bl	fprintf
-	ldr	x0,	=game_summary3
-	ldr	w1,	[x29, time_plyd_offset]
+
+	ldr	x0,	[x29, FILE_ptr_offset]
+	ldr	x1,	=game_summary3
+	ldr	w2,	[x29, time_plyd_offset]
 	bl	fprintf
-	ldr	x0,	=game_summary4
+
+	ldr	x0,	[x29, FILE_ptr_offset]
+	ldr	x1,	=game_summary4
 	bl	fprintf
 
 	ldr	x0,	[x29, FILE_ptr_offset]
 	bl	fclose 
 
-log_end:	
+log_game_end:	
 	
 	ldp	x29,	x30,	[sp],	dealloc			// Restored x29, x30 and deallocate memory
 	ret							// Return to calling code
@@ -1902,12 +1958,14 @@ e_if_c:
 	ldr	x14,	[x29,	board_addr_offset]
 	mov	x0,	x14					// Adding x29 and board_addr_offset and storing result in x0
 	bl	InitializeGame					// Branch and link InitializeGame
+
 	
 	// Getting size of leaderboard (using SVC)
 	bl	getLeaderboardSize				// Branch and link getLeaderboardSize				
 	ldr	x9,	=no_players				// Load x9 with address of no_players
 	str	w0,	[x9]					// Store w0 into no_players (x9)
 
+	
 	// Allocating memory for player struct array
 	ldr	x9,	=no_players				// Load x9 with address of no_players
 	ldrsw	x9,	[x9]					// Load x9 with value of no_players
@@ -1920,9 +1978,11 @@ e_if_c:
 	mov	x9,	sp					// Move sp into x9
 	str	x9,	[x29, player_arr_offset]		// Store x9 into player_arr
 	
+	
 	// Initializing leaderboard (from file)
 	ldr	x0,	[x29, player_arr_offset]		// Load x0 with the address of the player_arr
 	bl	InitializeLeaderboard				// Branch and link InitializeLeaderboard
+	
 	
 	// Printing uncovered board (for grading)
 	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
@@ -1941,7 +2001,7 @@ main_loop:
 	ldr	x0,	[x29,	board_addr_offset]		// Loading x0 with board address
 	ldr	x1,	[x29,	lives_offset]			// Loading x1 with lives value
 	ldr	d0,	[x29,	score_offset]			// Loading d0 with score value
-	ldr	x2,	[x29,	bombs_offset]			// Loadin x2 with bombs value
+	ldr	w2,	[x29,	bombs_offset]			// Loadin x2 with bombs value
 	bl	DisplayGame					// Branch and link DisplayGame
 
 	// Asking for x-coordinate of bomb
@@ -1985,14 +2045,14 @@ main_test:
 	b.le	end_main_loop					// If x9 <= #0, branch end_main_loop
 	b	main_loop					// Branch to main_loop (if all comparisons above are false)
 end_main_loop:	
-	
-	// Printing covered board (one last time)
-	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
-	ldr	x1,	[x29,	lives_offset]			// Load x1 with value of lives
-	ldr	d0,	[x29,	score_offset]			// Load d0 with value of score
-	ldr	x2,	[x29,	bombs_offset]			// load x2 with value of bombs
-	bl	DisplayGame					// Branch and link DisplayGame
 
+	// Printing covered board (one last time)
+	ldr	x0,	[x29, board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
+	ldr	x1,	[x29, lives_offset]			// Load x1 with value of lives
+	ldr	d0,	[x29, score_offset]			// Load d0 with value of score
+	ldr	w2,	[x29, bombs_offset]			// load x2 with value of bombs
+	bl	DisplayGame					// Branch and link DisplayGame	
+	
 	// Updating the leaderboard arr and file
 	ldr	x0,	[x29, player_arr_offset]		// Load x0 with the player_array's address
 	ldr	x1, 	[x29, name_offset]			// Load x1 with the name of the player
@@ -2005,9 +2065,11 @@ end_main_loop:
 	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
 
 	// Exiting the game
-	ldr	x0,	[x29,	lives_offset]			// Load x9 with value of lives
-	ldr	d0,	[x29,	score_offset]			// Load d0 with value of score 
-	ldr	x1,	[x29,	bombs_offset]			// Load x1 with value of bombs
+	ldr	x0,	[x29, lives_offset]			// Load x9 with value of lives
+	ldr	d0,	[x29, score_offset]			// Load d0 with value of score 
+	ldr	w1,	[x29, bombs_offset]			// Load x1 with value of bombs
+	ldr	x2,	[x29, name_offset]
+	mov	w3,	#0
 	bl	ExitGame					// Branch and link ExitGame
 
 	// Deallocating memory for player struct
@@ -2041,7 +2103,8 @@ seconds: 	.long	0                 			// Defining a long variable initialized to 
 neg_cells:	.int	0					// Definig and int variable initialized to zero
 db_cells:	.int 	0					// Defining an int variable initialized to zero
 db_reward_count:.int	0					// Defining an int variable initialized to zero
-exit_tile_f:	.byte 	0					// Defining a byte variable initialized to zero (false)
+exit_tile_f:	.byte 	0					// Defining a byte variable initialized to zero (boolean)
 no_players:	.int	0					// Defininng a int variable initialized to zero
+reward_active:	.byte	0					// Defining a byte variable initialized to zero (boolean)
 	
 	
