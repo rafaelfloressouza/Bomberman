@@ -1,6 +1,6 @@
 	// Final Project Part 2 ~ Bomberman
 	// Rafael Flores Souza, UCID: 30128094
-output0:	.string "%.2f\t"
+output0:	.string "%.2f\t"				
 output1:	.string "\n"
 output2:	.string "X "
 output3:	.string	"* "
@@ -20,8 +20,12 @@ output16:	.string "Oops! You loose a life because score is <= 0\n\n"
 output17:	.string "\nTotal uncovered score of %.2f points\n\n"
 output18:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
 output19:	.string "\n\nCongratulations, you won!!\n\n"
-output20:	.string "\n\nGame Over, You lose !!\n\n"
-output21:	.string "\nYou found double range reward(s). However they dont apply because\nyou found double range rewards on your last move\n"
+output20:	.string "\n\nGame Over, Not enough lives\n\n"
+output21:	.string "\nYou found double range reward(s). However they dont apply to next move because\nyou found double range rewards on your last move\n"
+output22:	.string "\nDo you want to see the leaderboard (YES -> 1 | NO -> 0)? "
+output23:	.string "\nHow many records do you want to retrieve? "
+output24:	.string "\n\nGame Over, Not enough bombs\n\n"
+output25:	.string "\n\nGame Over, You left the game\n"
 	
 	// Error Strings
 error0:		.string "Not enough arguments provided!\n"
@@ -29,9 +33,12 @@ error1:		.string "Height and Width have to be >=10\n"
 error2:		.string "\nThere is no leaderboard yet. Play the game to be added to it!\n"
 error3:		.string "\nFile leaderboard.txt could not be updated\n"
 error4:		.string "Game Summary could not be recorded!\n"
-error5:		.string "\nx position must be between >= 0 and < %d\n"
-error6:		.string "\ny position must be between >=0 and < %d\n"
+error5:		.string "\nx position must be between >= -1 and < %d\n"
+error6:		.string "\ny position must be between >= -1 and < %d\n"
 error7:		.string "\nName of player should be <= 15\n"
+error8:		.string "\nInsert 0 or 1\n"
+error9:		.string "\nNumber of records have to be >= 1 and <= %d\n"
+error10:	.string "The board is empty for now. Play the game!\n\n"
 	
 	// Input strings
 input0:		.string "%d"
@@ -1174,7 +1181,11 @@ cs_e_if:
 	Arguments -> x0: lives, d0: score, w1: bombs, x2: name, w3: time played
 	Return -> Nothing
 	*/
-
+	
+	define( exit_tile_found_r,	w9 )			// Defining w9 as exit_tile_found_r
+	define( lives_r,		w10 )			// Defining w10 as lives_r
+	define( bombs_r,		w11 )			// Defining w11 as bombs_r
+	
 	lives_size = 4						// Size of local variable lives
 	score_size = 8						// Size of local variable score
 	bombs_size = 4						// Size of local variable bombs
@@ -1198,26 +1209,33 @@ ExitGame:
 	str	x0,	[x29, lives_offset]			// Storing x0 in the stack (lives value)
 	str	d0,	[x29, score_offset]			// Storing d0 in the stack (score value)
 	str	w1,	[x29, bombs_offset]			// Storing x1 in the stack (bombs value)
-	str	x2,	[x29, name_offset]
-	str	w3,	[x29, time_offset]
+	str	x2,	[x29, name_offset]			// Store x2 in the stack (name value)
+	str	w3,	[x29, time_offset]			// Store w3 in the stack (time value)
 
-	ldr	x9,	=exit_tile_f				// Load x9 with address of exit_tile_f
-	ldrsb	w9,	[x9]					// Load x9 with value of exit_tile_f
-	ldr	w10,	[x29, lives_offset]			// Load w10 with value of lives
+	ldr	x12,	=exit_tile_f				// Load x12 with address of exit_tile_f
+	ldrsb	exit_tile_found_r,	[x12]			// Load exit_tile_found_r with value at address in x12
+	ldr	lives_r,	[x29, lives_offset]		// Load lives_r with value of lives
+	ldr	bombs_r,	[x29, bombs_offset]		// Load bombs_r with value of bombs
 
-	cmp	w9,	#1					// Comparing w9 and #1
-	b.ne	exit_else					// If w9 != 1, then branch to exit_else
-	cmp	w10,	#0					// Comparinng w10 and #0
-	b.le	exit_else					// If w10 <= #0, then branch to exit_else
-	ldr	w11,	[x29, bombs_offset]			// Load w11 with value of bombs
-	cmp	w11,	#0					// Comapring w11 with #0
-	b.eq	exit_else					// if w11 <= #0, then branch to exit_else
+	cmp	exit_tile_found_r,	#1			// Comparing exit_tile_found_r with #1
+	b.eq	exit_if						// If exit_tile_found_r == 1, then branch to exit_if 
+	cmp	lives_r,	#0				// Comparing lives_r with #0
+	b.eq	exit_else1					// If lives_r == 0, then branch to exit_else1
+	cmp	bombs_r,	#0				// Comparing bombs_r with #0
+	b.eq	exit_else2					// If bombs_r == 0, then branch to exist_else2
+	b	exit_else3					// Else branch to exit_else3
 exit_if:
-	ldr	x0,	=output19				// Load x0 with address of output19
-	b	end_exit_if					// Branch end_exit_if
-exit_else:	
-	ldr	x0,	=output20				// Load x0 with address of output20
-end_exit_if:	
+	ldr	x0,	=output19				// Load x0 with address of output19 string
+	b	e_exit_if					// Branch to e_exit_if
+exit_else1:	
+	ldr	x0,	=output20				// Load x0 with address of output20 string
+	b	e_exit_if					// Branch to e_exit_if
+exit_else2:
+	ldr	x0,	=output24				// Load x0 with address of output24 string
+	b	e_exit_if					// Branch to e_exit_if
+exit_else3:	
+	ldr	x0,	=output25				// Load x0 with address of output25
+e_exit_if:
 	bl	printf						// Branch and link printf
 
 	// Logging game summary into a file
@@ -1440,7 +1458,7 @@ getLeaderboardSize:
 	b.ge	open_ok1					// If w0 >= 0, then branch to open_ok1
 	ldr	x0,	=error2					// Load x0 with address of error2
 	bl	printf						// Branch and link printf
-	mov	w0,	-1					// Move -1 into w0
+	mov	w0,	0					// Move -1 into w0
 	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating memory
 	ret							// Returning to calling code
 	
@@ -1599,22 +1617,89 @@ init_end:
 	Arguments: x0 -> addr of player array, w1 -> number of top players to print
 	Return: None
 	*/
-	
+
+	num_rec_size = 4					// Size of num_rec var
+	see_l_size = 4						// Size of see_l var
+
 	// Number of bytes to allocate for the stack frame of the subroutine (quadword aligned)
-	alloc = -(reg_size + reg_size + reg_size + reg_size + 16) & -16
+	alloc = -(reg_size + reg_size + reg_size + reg_size + 16 + num_rec_size + see_l_size) & -16
 	dealloc = -alloc					// Number of bytes to deallocate
- 	
+
+	num_rec_offset = 48					// Offset to get num_rec
+	see_l_offset = 52					// Offset to get see_l
+	
 DisplayLeaderboard:
 	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" number of bytes and storing x29, x30
 	mov	x29,	sp					// Moving sp into x29
 
 	// Storing callee-saved registers
-	str	x19,	[x29,	r19_offset]			// Store x19 in the stack
-	str	x20,	[x29,	r20_offset]			// Store x20 in the stack
-	str	x21,	[x29,	r21_offset]			// Store x21 in the stack
-	str	x22,	[x29,	r22_offset]			// Store x22 in the stack
+	str	x19,	[x29, r19_offset]			// Store x19 in the stack
+	str	x20,	[x29, r20_offset]			// Store x20 in the stack
+	str	x21,	[x29, r21_offset]			// Store x21 in the stack
+	str	x22,	[x29, r22_offset]			// Store x22 in the stack
 
+	ldr	x9,	=no_players				// Load x9 with address of no_players
+	ldr	w10,	[x9]					// Load w10 with value of no_players
+	cmp	w10,	#0					// Compare w10 to 0
+	b.ne	non_empty_l					// If w10 != 0, then branch to non_empty_l
+	ldr	x0,	=error10				// Load x0 with address of error10
+	bl	printf						// Branch and link printf
+	b	disp_l_end					// Branch to disp_l_end
+non_empty_l:	
 	mov	base_r,	x0					// Move x0 into base_r
+	b	disp_l_val1					// Branch to disp_l_val1
+disp_error1:	
+
+	ldr	x0,	=error8					// Load x0 with address of error8 string
+	bl	printf						// Branch and link printf
+	
+disp_l_val1:	
+	
+	// Asking user if he/she wants to see the leaderboard
+	ldr	x0,	=output22				// Load x0 with addres of output22 string
+	bl	printf						// Branch and link printf
+	ldr	x0,	=input0					// Load x0 with address of input0
+	add	x1,	x29,	see_l_offset			// Move address of see_l into x1
+	bl	scanf						// Branch and link scanf
+
+	// Testing value
+	ldr	w9,	[x29, see_l_offset]			// Load w9 with value of see_l
+	cmp	w9,	#0					// Comparing w9 and #0 
+	b.eq	end_l_val1					// If w9 == 0, then branch to end_l_val1
+	cmp	w9,	#1					// Comparing w9 and #1
+	b.eq	end_l_val1					// If w9 == 1, then branch to end_l_val1
+	b	disp_error1					// Branch to disp_error1
+end_l_val1:	
+
+	// In case the player does not want to see the leaderboard
+	cmp	w9,	#0					// Comparing w9 and #0
+	b.eq	disp_l_end					// If w9 == 0, then branch to disp_l_end
+	
+	b	disp_l_val2					// Branch to disp_l_val2
+disp_error2:	
+
+	ldr	x0,	=error9					// Load x0 with address of error9 string
+	ldr	x9,	=no_players				// Load x9 with address of no_players
+	ldr	w1,	[x9]					// Load w1 with value of no_players
+	bl	printf						// Branch and link printf
+	
+disp_l_val2:	
+	
+	// Asking user how many records to retrieve
+	ldr	x0,	=output23				// Load x0 with address of output23 string
+	bl	printf						// Branch and link printf
+	ldr	x0,	=input0					// Load x0 with address of input0 string
+	add	x1,	x29,	num_rec_offset			// Move address of num_rec into x1
+	bl	scanf						// Branch and link scanf
+
+	// Testing value
+	ldr	w9,	[x29, num_rec_offset]			// Load w9 with value of num_rec
+	cmp	w9,	#1					// Comparing w9 and #1
+	b.lt	disp_error2					// If w9 < 1, then branch to disp_error2
+	ldr	x10,	=no_players				// Load x10 with address of no_players
+	ldr	w11,	[x10]					// Load w11 with value of no_players
+	cmp	w9,	w11					// Comparing w9 and w11
+	b.gt	disp_error2					// If w9 > w11, then branch to disp_error2
 
 	// Printing title
 	ldr	x0,	=leaderboard0				// Loading x0 with address of leaderboard0
@@ -1643,20 +1728,21 @@ disp_l_loop:
 	
 	add	i_r,	i_r,	#1				// Make j_r equal to i_r + 1
 disp_l_test:
-	ldr	x9,	=no_players				// Load address of no_players
-	ldrsw	x9,	[x9]					// Load value of no_players
-	cmp	i_r,	x9					// Comparing i_r and x9
+	ldrsw	x9,	[x29, num_rec_offset]			// Load x9 with value of num_rec
+	cmp	i_r,	x9					// Compare i_r and x9
 	b.lt	disp_l_loop					// If i_r < x9, then branch to disp_l_loop
-
+	
 	// Printing new line
 	ldr	x0,	=output1				// Load x0 with address of output1
 	bl	printf						// Branch and link printf
+
+disp_l_end:	
 	
 	// Restoring callee-saved registers
-	ldr	x19,	[x29,	r19_offset]			// Load x19 from stack
-	ldr	x20,	[x29,	r20_offset]			// Load x20 from stack
-	ldr	x21,	[x29,	r21_offset]			// Load x21 from stack
-	ldr	x22,	[x29,	r22_offset]			// Load x22 from stack
+	ldr	x19,	[x29, r19_offset]			// Load x19 from stack
+	ldr	x20,	[x29, r20_offset]			// Load x20 from stack
+	ldr	x21,	[x29, r21_offset]			// Load x21 from stack
+	ldr	x22,	[x29, r22_offset]			// Load x22 from stack
 	
 	ldp	x29, 	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating memory
 	ret							// Return to callign code
@@ -1682,10 +1768,10 @@ UpdateLeaderboard:
 	mov	x29,	sp					// Move sp into x29
 
 	// Storing callee-saved registers
-	str	x19,	[x29,	r19_offset]			// Load x19 from stack
-	str	x20,	[x29,	r20_offset]			// Load x20 from stack
-	str	x21,	[x29,	r21_offset]			// Load x21 from stack
-	str	x22,	[x29,	r22_offset]			// Load x22 from stack
+	str	x19,	[x29, r19_offset]			// Load x19 from stack
+	str	x20,	[x29, r20_offset]			// Load x20 from stack
+	str	x21,	[x29, r21_offset]			// Load x21 from stack
+	str	x22,	[x29, r22_offset]			// Load x22 from stack
 	
 	mov	base_r,	x0					// Move x0 into base_r
 
@@ -1764,10 +1850,10 @@ update_f_test:
 end_update_l:
 
 	// Restoring callee-saved registers
-	ldr	x19,	[x29,	r19_offset]			// Load x19 from stack
-	ldr	x20,	[x29,	r20_offset]			// Load x20 from stack
-	ldr	x21,	[x29,	r21_offset]			// Load x21 from stack
-	ldr	x22,	[x29,	r22_offset]			// Load x22 from stack
+	ldr	x19,	[x29, r19_offset]			// Load x19 from stack
+	ldr	x20,	[x29, r20_offset]			// Load x20 from stack
+	ldr	x21,	[x29, r21_offset]			// Load x21 from stack
+	ldr	x22,	[x29, r22_offset]			// Load x22 from stack
 
 	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating memory
 	ret							// Return to calling code
@@ -1855,9 +1941,11 @@ log_game_end:
 	bombs_size = 4						// Size (in bytes) of bombs
 	board_addr_size = 8					// Size (in bytes) of the board's address
 	player_arr_addr_size = 8				// Size (in bytes) of the array of player structs
+	start_time_size = 4					// Size (in bytes) of the start time 
+	end_time_size = 4					// Size (in bytes) of the start time
 
 	// Total amount of bytes to allocate for stack frame of main (quadword aligned)
-	alloc = -(coord_struct_size + 16 + name_size + lives_size + score_size + bombs_size + board_addr_size + player_arr_addr_size) & -16 		
+	alloc = -(coord_struct_size + 16 + name_size + lives_size + score_size + bombs_size + board_addr_size + player_arr_addr_size + start_time_size + end_time_size) & -16 		
 	dealloc = -alloc					// Total amount of bytes to deallocate for the stack frame of main (quadword alignned) 	
 
 	name_offset = 16					// Player Name offset
@@ -1866,7 +1954,9 @@ log_game_end:
 	bombs_offset = 36					// Bombs offset
 	board_addr_offset = 40					// Board offset
 	bombPos_offset = 48					// Offset of bombPos struct
-	player_arr_offset = 56
+	player_arr_offset = 56					// Offset of Player array addr
+	start_time_offset = 64					// Offset to get start time
+	end_time_offset = 68					// Offset to get end time
 	
 	// Main subroutine in charge of running all the code
 main:	stp	x29,	x30,	[sp, alloc]!			// Alocating alloc bytes on the stack
@@ -1886,6 +1976,15 @@ e_if_a:
 	mov	i_r,	1					// Movig 1 into i_r
 	ldr	x14,	[base_r, i_r, LSL 3]			// Loading x14 with address of string (argv1)
 	str	x14,	[x29, name_offset]			// Storing the address in the stack
+	mov	x0,	x14					// Move x14 into x0
+	bl	strlen						// Branch and link strlen
+	cmp	w0,	#15					// Comparing w0 to #15
+	b.le	str_length_fine					// If w0 <= 15, then branch to str_length_fine
+	ldr	x0,	=error7					// Load x0 with address of error7 string
+	bl	printf						// Branch and link printf
+	ldp	x29,	x30,	[sp],	dealloc			// Restore x29, x30 and deallocate memory
+	ret							// Return to OS
+str_length_fine:	
 
 	// HEIGHT
 	mov	i_r,	2					// Moving 2 into i_r
@@ -1894,7 +1993,7 @@ e_if_a:
 	mov	x14,	x0					// Moving integer result x0 into x14
 
 if_b:	cmp	x14,	#10					// Comparig x14 to #10
-	b.ge	e_if_b						// If x14 >= 10 thenn branch to e_if_b
+	b.ge	e_if_b						// If x14 >= 10 then branch to e_if_b
 
 	ldr	x0,	=error1					// Loading register x0 with address  of error1
 	bl	printf						// Branch and link printf
@@ -1937,7 +2036,16 @@ e_if_c:
 	str	d16,	[x29,	score_offset]			// Initializing	score to 0
 	
 	// BOMBS
-	mov	w14,	#3					// Moving 3 into w14
+	// Calculating the proportion of bombs based of the size of the board (3% of the area of the board)
+	ldr 	x14,	=height					// Load x14 with address of height
+	ldr	x15,	=width					// Load x15 with address of width
+	ldrsw	x14,	[x14]					// Load x14 with value of height
+	ldrsw 	x15,	[x15]					// Load x15 with value of width
+	mov	x16, 	#3					// Move 3 into x16
+	mul	x14,	x14,	x15				// Multiply x14 and x15 ~ Store result in x14
+	mul	x14,	x14,	x16				// Multiply x14 and x16 ~ Store result in x14
+	mov	x16,	#100					// Move 100 into x16
+	udiv	x14,	x14,	x16				// Divide x14 by x16 ~ Store result in x14
 	str	w14,	[x29,	bombs_offset]			// Initializing bombs to 3
 
 	// Seeding the rand() function
@@ -1963,14 +2071,12 @@ e_if_c:
 	ldr	x14,	[x29,	board_addr_offset]
 	mov	x0,	x14					// Adding x29 and board_addr_offset and storing result in x0
 	bl	InitializeGame					// Branch and link InitializeGame
-
 	
 	// Getting size of leaderboard (using SVC)
 	bl	getLeaderboardSize				// Branch and link getLeaderboardSize				
 	ldr	x9,	=no_players				// Load x9 with address of no_players
 	str	w0,	[x9]					// Store w0 into no_players (x9)
 
-	
 	// Allocating memory for player struct array
 	ldr	x9,	=no_players				// Load x9 with address of no_players
 	ldrsw	x9,	[x9]					// Load x9 with value of no_players
@@ -1982,12 +2088,10 @@ e_if_c:
 	add	sp,	sp,	x9				// Adding x9 and sp (allocating memory)
 	mov	x9,	sp					// Move sp into x9
 	str	x9,	[x29, player_arr_offset]		// Store x9 into player_arr
-	
-	
+		
 	// Initializing leaderboard (from file)
 	ldr	x0,	[x29, player_arr_offset]		// Load x0 with the address of the player_arr
 	bl	InitializeLeaderboard				// Branch and link InitializeLeaderboard
-	
 	
 	// Printing uncovered board (for grading)
 	ldr	x0,	[x29,	board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
@@ -1999,6 +2103,11 @@ e_if_c:
 	// Asking player if he/she wants to see the leaderboard
 	ldr	x0,	[x29, player_arr_offset]
 	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
+
+	// Getting start time of game
+	mov	x0,	#0					// Move 0 (NULL) into x0
+	bl	time						// Branch and link time
+	str	w0,	[x29, start_time_offset]		// Store w0 into start_time
 	
 main_loop:
 
@@ -2009,7 +2118,20 @@ main_loop:
 	ldr	w2,	[x29,	bombs_offset]			// Loadin x2 with bombs value
 	bl	DisplayGame					// Branch and link DisplayGame
 
-	// Asking for x-coordinate of bomb
+	// Asking for x-coordinate and validating range
+	b	main_val1					// Branch to main_val1
+error_val1:	
+
+	// Error if value is not in range
+	ldr	x0,	=error5					// Load x0 with address of error5 string
+	ldr	x9,	=height					// Load x9 with address of height
+	ldrsw	x9,	[x9]					// Load x9 with value of height
+	mov	x1,	x9					// Move x9 into x1
+	bl	printf						// Branch and link printf
+	
+main_val1:
+
+	// Prompting user
 	ldr	x0,	=output12				// Loadig x0 with address of output12
 	bl	printf						// Branch and link
 
@@ -2018,8 +2140,34 @@ main_loop:
 	ldr	x0,	=input0					// Loading x0 with address of input0
 	add	x1,	x29,	offset_r			// Addinng x29 and offset_r and storing result in x1
 	bl	scanf						// Branch and link scanf
+main_test_val1:
+	ldr	x9,	=height					// Load x9 with address of height
+	ldrsw	x9,	[x9]					// Load x9 with value of height
+	ldrsw	x10,	[x29, offset_r]				// Load x10 with value at coord.x
+	cmp	x10,	#-1					// Comparing x10 and -1 
+	b.lt	error_val1					// If x10 < -1, then branch to error_val1
+	cmp	x10,	x9					// Comparing x10 and x9
+	b.ge	error_val1					// If x10 >= x9, then branch to error_val1
 
-	// Asking for y-coordinate of bomb
+	cmp	x10,	#-1					// Comparing x10 and -1		
+	b.ne	continue1					// If x10 != -1, then branch to continue1
+	b	end_main_loop					// Branch to end_main_loop
+continue1:	
+	
+	// Asking for y-coordinate and validating range
+	b	main_val2					// Branch to main_val2
+error_val2:
+
+	// Error if value is not in range
+	ldr	x0,	=error6					// Load x0 with address of error6 string
+	ldr	x9,	=width					// Load x9 with address of width
+	ldrsw	x9,	[x9]					// Load x9 with value of width
+	mov	x1,	x9					// Move x9 into x1
+	bl	printf						// Branch and link printf
+
+main_val2:	
+
+	// Prompting user 
 	ldr	x0,	=output13				// Load x0 with address of output13
 	bl	printf						// Branch and link printf
 
@@ -2028,6 +2176,19 @@ main_loop:
 	ldr	x0,	=input0					// Loading x0 with address of input0
 	add	x1,	x29,	offset_r			// Adding x29 and offset_r and storing result in x1
 	bl	scanf						// Branch and link scanf
+main_test_val2:
+	ldr	x9,	=width					// Load with address of width	
+	ldrsw	x9,	[x9]					// Load x9 with value of width
+	ldrsw	x10,	[x29, offset_r]				// Load x10 with value coord.y
+	cmp	x10,	#-1					// Comparing x10 with -1
+	b.lt	error_val2					// If x10 < -1, then branch to error_val2
+	cmp	x10,	x9					// Comparing x10 and x9
+	b.ge	error_val2					// If x10 >= x9, then branch to error_val2
+
+	cmp	x10,	#-1					// Comparinng x10 and -1
+	b.ne	continue2					// If x10 != -1, branch to continue2
+	b	end_main_loop					// Branch to end_main_loop
+continue2:
 
 	// Calling calculate score
 	ldr	x0,	[x29,	board_addr_offset]		// Loading x0 with board's address
@@ -2051,31 +2212,40 @@ main_test:
 	b	main_loop					// Branch to main_loop (if all comparisons above are false)
 end_main_loop:	
 
+	// Getting end time of game
+	mov	x0,	#0					// Move 0 (NULL) into x0
+	bl	time						// Branch and link time
+	str	w0,	[x29, end_time_offset]			// Store w0 into end_time
+	
 	// Printing covered board (one last time)
 	ldr	x0,	[x29, board_addr_offset]		// Adding x29 and board_addr_offset and storing result in x0
 	ldr	x1,	[x29, lives_offset]			// Load x1 with value of lives
 	ldr	d0,	[x29, score_offset]			// Load d0 with value of score
 	ldr	w2,	[x29, bombs_offset]			// load x2 with value of bombs
-	bl	DisplayGame					// Branch and link DisplayGame	
-	
+	bl	DisplayGame					// Branch and link DisplayGame
+
 	// Updating the leaderboard arr and file
 	ldr	x0,	[x29, player_arr_offset]		// Load x0 with the player_array's address
 	ldr	x1, 	[x29, name_offset]			// Load x1 with the name of the player
 	ldr	d0,	[x29, score_offset]			// Load d0 with the score of the player
-	mov	w2,	#0					// Moving time played (in seconds) of the player
+	ldr	w9,	[x29, start_time_offset]		// Load w9 with value of start_time
+	ldr	w10,	[x29, end_time_offset]			// Load w10 with value of end_time
+	sub	w2,	w10,	w9				// Moving end_time - start_time into w2
 	bl UpdateLeaderboard					// Branch and link UpdateLeaderboard
-	
-	// Asking player if he/she wants to see the leaderboard
-	ldr	x0,	[x29, player_arr_offset]		// Load x0 with the address of the player array
-	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
 
 	// Exiting the game
 	ldr	x0,	[x29, lives_offset]			// Load x9 with value of lives
 	ldr	d0,	[x29, score_offset]			// Load d0 with value of score 
 	ldr	w1,	[x29, bombs_offset]			// Load x1 with value of bombs
-	ldr	x2,	[x29, name_offset]
-	mov	w3,	#0
+	ldr	x2,	[x29, name_offset]			// Load x2 with address of name
+	ldr	w9,	[x29, start_time_offset]		// Load w9 with value of start_time
+	ldr	w10,	[x29, end_time_offset]			// Load	w10 with value of end_time
+	sub	w3,	w10,	w9				// Moving end_time - start_time into w3
 	bl	ExitGame					// Branch and link ExitGame
+		
+	// Asking player if he/she wants to see the leaderboard
+	ldr	x0,	[x29, player_arr_offset]		// Load x0 with the address of the player array
+	bl	DisplayLeaderboard				// Branch and link DisplayLeaderboard
 
 	// Deallocating memory for player struct
 	ldr	x9,	=no_players				// Loading x9 with address of no_players
