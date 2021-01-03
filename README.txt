@@ -1,6 +1,4 @@
-Project CPSC 355 (Computing Machinery)
-
-----BOMBERMAN GAME CONSOLE VERSION----
+#----BOMBERMAN GAME CONSOLE VERSION----
 
 HOW TO COMPILE AND RUN:
 
@@ -29,5 +27,8 @@ This game is a simplification of the 1983 bomberman game.
 
 Some Pictures of how to game looks:
 
-
+<img width="911" alt="Screen Shot 2021-01-03 at 1 58 09 PM" src="https://user-images.githubusercontent.com/51538046/103485569-99dd8c80-4dcd-11eb-84c6-2238ffd8bf01.png">
+<img width="911" alt="Screen Shot 2021-01-03 at 1 57 48 PM" src="https://user-images.githubusercontent.com/51538046/103485570-9e09aa00-4dcd-11eb-9c3c-e6192709ad37.png">
+<img width="911" alt="Screen Shot 2021-01-03 at 1 58 42 PM" src="https://user-images.githubusercontent.com/51538046/103485571-a235c780-4dcd-11eb-941b-718521e36603.png">
+<img width="911" alt="Screen Shot 2021-01-03 at 1 58 27 PM" src="https://user-images.githubusercontent.com/51538046/103485572-a661e500-4dcd-11eb-9115-aa460e9684d6.png">
 
