@@ -13,7 +13,7 @@ HOW TO PLAY:
 
 This game is a simplification of the 1983 bomberman game.
 
-1. You have to run the game after compiling it -> ./exe bomber man 50 50 for example
+1. You have to run the game after compiling it -> ./exe bomberman 50 50 for example
 2. Then you will be asked if you want to see the leaderboard and how many records you want to retrieve.
 3. Then the game will automatically start -> You will have to provide valid x and y position for the bomb. Unlike the original game, the bomberman cannot die in this version of the game.
 4. Whenever a bomb is placed, it will "explode" and reveal some tiles. The possible tiles you can find are:
