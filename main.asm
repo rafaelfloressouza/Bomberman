@@ -1,73 +1,73 @@
 	// Final Project Part 2 ~ Bomberman
 	// Rafael Flores Souza, UCID: 30128094
-output0:	.string "%.2f\t"				
-output1:	.string "\n"
-output2:	.string "X "
-output3:	.string	"* "
-output4:	.string "$ "
-output5:	.string "*\t"
-output6:	.string "$\t"
-output7:	.string "+ "
-output8:	.string "- "
-output9:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
-output10:	.string "\nTotal negative entries %d/%d = %.2f%% less than 40%%"
-output11:	.string "\nTotal reward entries %d/%d = %.2f%% less than 20%% (including exit tile)\n\n"
-output12:	.string "\nEnter x position or quit (-1): "
-output13:	.string "\nEnter y position or quit (-1): "
-output14:	.string "\nGame state not stored\nBye...\n"
-output15:	.string "\nBoom!! You found %d double range reward(s) ~ <= 9  will apply\n"
-output16:	.string "Oops! You loose a life because score is <= 0\n\n"
-output17:	.string "\nTotal uncovered score of %.2f points\n\n"
-output18:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"
-output19:	.string "\n\nCongratulations, you won!!\n\n"
-output20:	.string "\n\nGame Over, Not enough lives\n\n"
-output21:	.string "\nYou found double range reward(s). However they dont apply to next move because\nyou found double range rewards on your last move\n"
-output22:	.string "\nDo you want to see the leaderboard (YES -> 1 | NO -> 0)? "
-output23:	.string "\nHow many records do you want to retrieve? "
-output24:	.string "\n\nGame Over, Not enough bombs\n\n"
-output25:	.string "\n\nGame Over, You left the game\n"
+output0:	.string "%.2f\t"																	// Defining output0 string				
+output1:	.string "\n"																		// Defining output1 string
+output2:	.string "X "																		// Defining output2 string
+output3:	.string	"* "																		// Defining output3 string
+output4:	.string "$ "																		// Defining output4 string
+output5:	.string "*\t"																		// Defining output5 string
+output6:	.string "$\t"																		// Defining output6 string
+output7:	.string "+ "																		// Defining output7 string
+output8:	.string "- "																		// Defining output8 string
+output9:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"														// Defining output9 string
+output10:	.string "\nTotal negative entries %d/%d = %.2f%% less than 40%%"											// Defining output10 string
+output11:	.string "\nTotal reward entries %d/%d = %.2f%% less than 20%% (including exit tile)\n\n"								// Defining output11 string	
+output12:	.string "\nEnter x position or quit (-1): "														// Defining output12 string
+output13:	.string "\nEnter y position or quit (-1): "														// Defining output13 string
+output14:	.string "\nGame state not stored\nBye...\n"														// Defining output14 string
+output15:	.string "\nBoom!! You found %d double range reward(s) ~ <= 9  will apply\n"										// Defining output15 string
+output16:	.string "Oops! You loose a life because score is <= 0\n\n"												// Defining output16 string
+output17:	.string "\nTotal uncovered score of %.2f points\n\n"													// Defining output17 string
+output18:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"														// Defining output18 string
+output19:	.string "\n\nCongratulations, you won!!\n\n"														// Defining output19 string
+output20:	.string "\n\nGame Over, Not enough lives\n\n"														// Defining output20 string
+output21:	.string "\nYou found double range reward(s). However they dont apply to next move because\nyou found double range rewards on your last move\n"		// Defining output21 string
+output22:	.string "\nDo you want to see the leaderboard (YES -> 1 | NO -> 0)? "											// Defining output22 string
+output23:	.string "\nHow many records do you want to retrieve? "													// Defining output23 string
+output24:	.string "\n\nGame Over, Not enough bombs\n\n"														// Defining output24 string
+output25:	.string "\n\nGame Over, You left the game\n"														// Definig output25 string
 	
 	// Error Strings
-error0:		.string "Not enough arguments provided!\n"
-error1:		.string "Height and Width have to be >=10\n"
-error2:		.string "\nThere is no leaderboard yet. Play the game to be added to it!\n"
-error3:		.string "\nFile leaderboard.txt could not be updated\n"
-error4:		.string "Game Summary could not be recorded!\n"
-error5:		.string "\nx position must be between >= -1 and < %d\n"
-error6:		.string "\ny position must be between >= -1 and < %d\n"
-error7:		.string "\nName of player should be <= 15\n"
-error8:		.string "\nInsert 0 or 1\n"
-error9:		.string "\nNumber of records have to be >= 1 and <= %d\n"
-error10:	.string "The board is empty for now. Play the game!\n\n"
+error0:		.string "Not enough arguments provided!\n"														// Defining error0 string
+error1:		.string "Height and Width have to be >=10\n"														// Defining error1 string
+error2:		.string "\nThere is no leaderboard yet. Play the game to be added to it!\n"										// Defining error2 string
+error3:		.string "\nFile leaderboard.txt could not be updated\n"													// Defining error3 string
+error4:		.string "Game Summary could not be recorded!\n"														// Defining error4 string
+error5:		.string "\nx position must be between >= -1 and < %d\n"													// Defining error5 string
+error6:		.string "\ny position must be between >= -1 and < %d\n"													// Defining error6 string
+error7:		.string "\nName of player should be <= 15\n"														// Defining error7 string
+error8:		.string "\nInsert 0 or 1\n"																// Defining error8 string
+error9:		.string "\nNumber of records have to be >= 1 and <= %d\n"												// Defining error9 string
+error10:	.string "The board is empty for now. Play the game!\n\n"												// Defining error10 string
 	
 	// Input strings
-input0:		.string "%d"
-input1:		.string "%s"
+input0:		.string "%d"																		// Defining input0 string
+input1:		.string "%s"																		// Defining input1 string
 
-	// File input/output strings 
-file0:		.string "leaderboard.txt"
-file1:		.string "game_summary.txt"
-file_op0:	.string "r"
-file_op1:	.string "w"
+	// File input/output strings 	
+file0:		.string "leaderboard.txt"																// Defining file0 string
+file1:		.string "game_summary.txt"																// Defining file1 string
+file_op0:	.string "r"																		// Defining file_op0 string
+file_op1:	.string "w"																		// Defining file_op1 string
 	
 	// Tokenizing strings
-separator:	.string " "
-separator1:	.string "\n"
+separator:	.string " "																		// Defining separator string		
+separator1:	.string "\n"																		// Defining separator string
 	
 	// Strings for leaderboard
-leaderboard0:	.string "------------------LEADERBOARD------------------\n"
-leaderboard1:	.string "Name\t\tScore\t\tTime Played\n"
-leaderboard2:	.string "-----------------------------------------------\n"
-leaderboard3:	.string "%-15s\t%4.2f\t\t%d\n"
-write0:		.string "%d\n"
-write1:		.string "%s %.2f %d\n"
+leaderboard0:	.string "------------------LEADERBOARD------------------\n"												// Defining leaderboard0 string
+leaderboard1:	.string "Name\t\tScore\t\tTime Played\n"														// Defining leaderboard1 string
+leaderboard2:	.string "-----------------------------------------------\n"												// Defining leaderboard2 string
+leaderboard3:	.string "%-15s\t%4.2f\t\t%d\n"																// Defining leaderboard3 string
+write0:		.string "%d\n"																		// Defining write0 string
+write1:		.string "%s %.2f %d\n"																	// Defining write1 string
 
 	// Strings for game summary
-game_summary0:	.string "**********GAME_SUMMARY**********\n"
-game_summary1:	.string "Player's Name: %s\n"
-game_summary2:	.string "Score: %.2f\n"
-game_summary3:	.string "Time played: %d\n"
-game_summary4:	.string "*******************************\n"
+game_summary0:	.string "**********GAME_SUMMARY**********\n"														// Defining game_summary0 string
+game_summary1:	.string "Player's Name: %s\n"																// Defining game_summary1 string
+game_summary2:	.string "Score: %.2f\n"																	// Defining game_summary2 string
+game_summary3:	.string "Time played: %d\n"																// Defining game_summary3 string
+game_summary4:	.string "*******************************\n"														// Defining game_summary4 string
 	
 	.balign	4                				// Adding 4 bytes of padding (to keep everything consistent)
 	.global main             				// Making main global to the linker (OS)
@@ -104,128 +104,6 @@ game_summary4:	.string "*******************************\n"
 	scr_offset = 8						// Offset to get scr
 	time_plyd_offset = 16					// Offset to get time_plyd
 	
-	// Subroutine is in charge of providing a seed for
-	// function random number.
-sRand:	stp	x29,	x30,	[sp, -16]!			// Allocatinng 16 bytes onn the stack for the subroutine
-	mov	x29,	sp					// Making x29 point to sp (done so sp is not changed)
-
-	ldr	x0,	=seconds         			// Loading address of int variable seconds into register x0
-	bl	time		         			// Callingy function time
-	ldr	x14,	=seconds        			// Loading adress of int variable seconds into register 14
-	ldr	x15, 	[x14]           			// Dereferencing address stored in register x14 into register x15
-	mov	x0,	x15              			// Moving value stored in x15 into x0
-	bl	srand	         				// Calling srand function
-	
-	ldp	x29,	x30,	[sp],	16			// Deallocating 16 bytes from the stack
-	ret							// Returning to the operating system
-
-	/*--------------------------------------------------------------*/
-
-	/* 
-	Subroutine is in charge of generating an integer random number
-	between 0 and upper_bound (w1)
-	Returns the random number in w0
-	*/
-	
-	l_bound_size = 4					// Size of lower bound local var
-	u_bound_size = 4					// Size of upper bound local var
-	
-	alloc = -(16 + l_bound_size + u_bound_size) & -16	// Number of bytes to allocate for the stack frame of the subroutine (quadword aligned)
-	dealloc = -alloc					// Number of bytes to deallocate
-
-	l_bound_offset = 16					// Offset to get the lower bound var
-	u_bound_offset = 20					// Offset to get the upper bound var
-IntRand:
-	stp	x29,	x30,	[sp, alloc]!			// Allocating "alloc" bytes on the stack for the subroutine		
-	mov	x29,	sp					// Making x29 point to where sp is pointing
-
-	str	w0,	[x29,	l_bound_offset]			// Storing value in w0 into the stack
-	str	w1,	[x29,	u_bound_offset]			// Storing value in w1 into the stack
-
-	bl	rand						// Branch and link rand
-	mov	w14,	w0					// mov	w0 into w14
-
-	mov	w16,	#1					// Move 1 into w16
-	mov	w17,	#1					// Move 1 into w16
-	b test_a						// Branch test_a
-loop_a:
-	mov	w13,	w16					// Move w16 into w17
-	lsl	w16,	w16,	#1				// Shift left w16 by 1
-test_a:	ldr	w15,	[x29,	u_bound_offset]			// Load value of upper bound into w15
-	cmp	w16,	w15					// Compare w16 and w15 
-	b.le	loop_a						// If w16 <= w15, then branch loop_a
-
-	sub	w16,	w16,	#1				// Subtracting w16 by 1
-	sub	w13,	w13,	#1				// Subtracting w15 by 1
-	
-	and	w14,	w14,	w16				// Anding w14 by w16
-
-	ldr	w15,	[x29,	u_bound_offset]			// Loading value of upper bound into w15
-if_rand:
-	cmp	w14,	w15					// Comparig w14 and w15
-	b.le	e_if_rand					// If w14 <= w15, then branch e_if_rand
-	and	w14,	w14,	w13				// Else, anding w14 with w17
-e_if_rand:
-
-	mov	w0,	w14					// Moving w14 into w0 (return value)
-	
-	ldp	x29,	x30,	[sp],	dealloc			// Restoring x29, x30 and deallocating "dealoc" bytes
-	ret							// Returning to main
-	
-	/*--------------------------------------------------------------*/
-
-	/*
-	Subroutine is in charge of generating a float random number
-	between 0.0 and 15.0 inclusive.
-	Accepts an argument to determine if the number is negative or positive (w0)
-	Return the number in d0
-	*/
-FloatRand:
-	stp	x29,	x30,	[sp, -32]!			// Allocatinng 32 bytes for the stack frame
-	mov	x29,	sp					// Makig x29 point to where sp is pointing
-
-	strb	w0,	[x29,	16]				// Storing w0 into the stack
-
-	// Generating a number between [0,1]
-	bl	rand						// Branch and link rand
-	mov	x10,	x0					// Moving x0 (res) into x10 
-	mov	x9,	#2147483647				// Moving RAND_MAX into x9	
-	scvtf	d16,	x9					// Converting x9 into a float value
-	scvtf	d17,	x10					// Connverting x10 into a float value
-	fdiv	d17,	d17,	d16				// Dividing d17 and d16
-	
-	// Generating a number betweenn [0,15]
-	bl	rand						// Branch and link rand
-	and	x9,	x0,	#15				// Making the result by 15
-	scvtf	d18,	x9					// Converting it to a float
-
-	// Adding the two numbers 	
-	fadd	d17,	d17,	d18				// Adding d17 and d18
-
-	// Checking if number exceeds 15.0
-	mov	x9,	15					// Moving 15 into x9
-	scvtf	d16,	x9					// Convertig x9 into a float
-if_float_rand:
-	fcmp	d17,	d16					// Comparinng d17 and d16
-	b.le	e_if_float_rand					// If d17 <= 15.0, then branch e_if_float_rand
-	fmov	d17,	d16					// Else Move d16 into d17
-e_if_float_rand:	
-	
-	// Checking if number should be neg
-	ldrsb	w9,	[x29,	16]				// Loading value of the argument (passed into the function) into w9
-if_float_rannd2:
-	cmp	w9,	#0					// Comparing w9 and #0
-	b.eq	e_if_float_rand2				// If w9 == 0, then branch e_if_float_rand2
-	fneg	d17,	d17					// Else negate d17 (make it negative)
-e_if_float_rand2:	
-
-	fmov	d0,	d17					// Moving d17 into d0 (returnig the value)
-	
-	ldp	x29,	x30,	[sp],	32			// Restoring x29, x30 and deallocating memory
-	ret							// Returning to main
-
-	/*--------------------------------------------------------------*/
-
 	/*
 	Subroutine display the 2D game board (uncovered)
 	It accepts the address of the board in x0
@@ -1249,98 +1127,6 @@ e_exit_if:
 
 	/*--------------------------------------------------------------*/
 
-	/*
-	Subroutine compares two floats
-	Arguments: x0 -> addres of first num, x1 -> address of second num
-	Return:	1 (first num > second num) or 0 (first num <= second num) in w0
-	*/
-
-	define( a_addr_r,	x9 )				// Defining x9 as a_addr_r
-	define( b_addr_r,	x10 )				// Defining x10 as b_addr_r
-	define( a_val_r,	d16 )				// Defining d16 as a_val_r
-	define( b_val_r,	d17 )				// Defining d17 as b_val_r
-
-Comparator:		
-	stp	x29,	x30,	[sp, -16]!			// Allocatinng 16 bytes and storing x29, x30
-	mov	x29,	sp					// Move sp into x29
-	
-	mov	a_addr_r,	x0				// Move x0 into a_addr_r
-	mov	b_addr_r,	x1				// Move x1 into b_addr_r
-
-	ldr	a_val_r,	[a_addr_r]			// Load a_val_r with a
-	ldr	b_val_r,	[b_addr_r]			// Load b_val_r with b
-
-	fsub	d18,	a_val_r,	b_val_r			// Subtracting a and b ~ Storing result in s18
-	fabs	d18,	d18					// Absolute value of s18
-	
-	mov	w11,	#1000					// Move 1000 into w11
-	mov	w12,	#1					// Move 1 into w12
-	scvtf	d19,	w11					// Converting w11 into d19
-	scvtf	d20,	w12					// Converting w12 into d20
-	fdiv	d19,	d20,	d19				// Divising d20 by d19 ~ Storing result in d19
-	fcmp	d18,	d19					// Comparing d18 and d19
-	b.gt	el1_cmp_if					// if d18 > d19, branch to el1_cmp_if
-cmp_if:
-	mov	w0,	#0					// Move 0 to w0
-	
-	b	e_cmp_if					// Branch to e_cmp_if
-	
-el1_cmp_if:
-	fsub	d18,	a_val_r,	b_val_r			// Subracting a and b ~ Store result in s18
-	fcmp	d18,	0.0					// Comparing s18 and 0.0		
-	b.le	el2_cmp_if					// If s18 < 0.0, then branch to el2_cmp_if
-	
-	mov	w0,	#1					// Move #1 into w0
-	b	e_cmp_if					// Branch to e_cmp_if
-	
-el2_cmp_if:
-	
-	mov	w0,	#0					// Move 0 into w0
-	
-e_cmp_if:	
-
-	ldp	x29,	x30,	[sp],	16			// Restoring x29, x30 and deallocating memory
-	ret							// Return to calling code
-		
-	/*--------------------------------------------------------------*/
-	
-	define( base_a_r,	x9 )				// Defining x9 as base_a_r
-	define( base_b_r,	x10 )				// Defining x10 as base_b_r
-	define( tmp_val_r,	x11 )				// Defining x11 as tmp_val_r
-	define( tmp_val2_r,	x12 )				// Defining x12 as tmp_val2_r
-	define( tmp_float_r,	d16 )				// Defining d16 as tmp_float_r
-	define( tmp_float2_r,	d17 )				// Defininng d17 as tmp_float2_r
-
-SwapPlayers:
-	stp	x29,	x30,	[sp, -16]!			// Allocating 16 bytes and storing x29, x30
-	mov	x29,	sp					// Move sp into x29
-
-	mov	base_a_r,	x0				// Move x0 into base_a_r
-	mov	base_b_r,	x1				// Move x1 into base_b_r
-
-	// Swapping names
-	ldr	tmp_val_r,	[base_a_r, plyr_name_offset]	// Load tmp_val_r with player's a name
-	ldr	tmp_val2_r,	[base_b_r, plyr_name_offset]	// Load tmp_val2_r with player's b name
-	str	tmp_val2_r,	[base_a_r, plyr_name_offset]	// Storing tmp_val2_r into player's a name
-	str	tmp_val_r,	[base_b_r, plyr_name_offset]	// Storing tmp_val_r into player's b name
-
-	// Swapping scores
-	ldr	tmp_float_r,	[base_a_r, scr_offset]		// Load tmp_float_r with player's a score
-	ldr	tmp_float2_r,	[base_b_r, scr_offset]		// Load tmp_float2_r with palyer's b score
-	str	tmp_float2_r,	[base_a_r, scr_offset]		// Store tmp_float2_r into player's a score
-	str	tmp_float_r,	[base_b_r, scr_offset]		// Store tmp_float_r into players's b score
-
-	// Swapping time played
-	ldrsw	tmp_val_r,	[base_a_r, time_plyd_offset]	// Load tmp_val_r with player's a time played
-	ldrsw	tmp_val2_r,	[base_b_r, time_plyd_offset]	// Load tmp_val2_r with player's b time played
-	str	w12,		[base_a_r, time_plyd_offset]	// Store w12 into player's a time played	
-	str	w11,		[base_b_r, time_plyd_offset]	// Store w11 into player's b time played
-
-	ldp	x29,	x30,	[sp],	16			// Restored x29, x30 and deallocating memory
-	ret							// Return to calling code
-	
-	/*--------------------------------------------------------------*/
-	
 	/* 
 	Subroutine is in charge of sorting he leaderboard array in descending order based on score
 	Arguments: x0 -> base address of the leaderboard array
