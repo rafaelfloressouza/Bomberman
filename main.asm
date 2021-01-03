@@ -1,14 +1,12 @@
-	// Final Project Part 2 ~ Bomberman
-	// Rafael Flores Souza, UCID: 30128094
 output0:	.string "%.2f\t"																	// Defining output0 string				
 output1:	.string "\n"																		// Defining output1 string
-output2:	.string "X "																		// Defining output2 string
-output3:	.string	"* "																		// Defining output3 string
-output4:	.string "$ "																		// Defining output4 string
+output2:	.string "%sX "																		// Defining output2 string
+output3:	.string	"%s* "																		// Defining output3 string
+output4:	.string "%s$ "																		// Defining output4 string
 output5:	.string "*\t"																		// Defining output5 string
 output6:	.string "$\t"																		// Defining output6 string
-output7:	.string "+ "																		// Defining output7 string
-output8:	.string "- "																		// Defining output8 string
+output7:	.string "%s+ "																		// Defining output7 string
+output8:	.string "%s- "																		// Defining output8 string
 output9:	.string "Lives: %d\nScore %.2f\nBombs: %d\n"														// Defining output9 string
 output10:	.string "\nTotal negative entries %d/%d = %.2f%% less than 40%%"											// Defining output10 string
 output11:	.string "\nTotal reward entries %d/%d = %.2f%% less than 20%% (including exit tile)\n\n"								// Defining output11 string	
@@ -68,6 +66,13 @@ game_summary1:	.string "Player's Name: %s\n"																// Defining game_sum
 game_summary2:	.string "Score: %.2f\n"																	// Defining game_summary2 string
 game_summary3:	.string "Time played: %d\n"																// Defining game_summary3 string
 game_summary4:	.string "*******************************\n"														// Defining game_summary4 string
+
+	// Color strings
+YELLOW:		.string "\x1B[33m"																	// Defining yellow color
+WHITE:		.string "\x1B[37m"																	// Defining white color
+GREEN:		.string "\x1B[32m"																	// Defining green color
+RED:		.string "\x1B[31m"																	// Defining red color
+RESET:		.string "\x1B[0m"																	// Defining reset (all properties)
 	
 	.balign	4                				// Adding 4 bytes of padding (to keep everything consistent)
 	.global main             				// Making main global to the linker (OS)
@@ -607,6 +612,9 @@ disp_loop2:
 disp_undiscovered:
 
 	ldr	x0,	=output2				// Load x0 with address of output2
+	ldr	x1,	=WHITE					// Making the text white
+	bl	printf						// Branch and link printf
+	ldr	x0,	=RESET					// Resetting the text color
 	bl	printf						// Branch and link printf
 	b	end_disp					// Branch end_disp
 
@@ -633,6 +641,9 @@ p_d_range_cell:
 	b.ne	p_normal_cell					// If d16 != d17, then branch to p_normal_cell
 
 	ldr	x0,	=output4				// Load x0 with address of output4
+	ldr	x1,	=YELLOW					// Make text color yellow
+	bl	printf						// Branch and link printf
+	ldr	x0,	=RESET					// Resetting the color of the text
 	bl	printf						// Branch and link printf
 	b	end_disp					// Branch end_disp
 
@@ -645,13 +656,19 @@ p_normal_cell:
 positive:
 
 	ldr	x0,	=output7				// Load x0 with the address of output7
+	ldr	x1,	=GREEN					// Make text green
 	bl	printf						// Branch and link printf
+	ldr	x0,	=RESET					// Resetting the color of the text
+	bl	printf
 	b 	end_disp					// Branch end_disp
 	
 negative:
 
 	ldr	x0,	=output8				// Load x0 with address of output8
+	ldr	x1,	=RED					// Make text red 
 	bl	printf						// Branch and link printf
+	ldr	x0,	=RESET					// Resetting the color of the text
+	bl	printf
 
 end_disp:
 	
